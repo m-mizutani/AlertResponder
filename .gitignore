@@ -1,0 +1,9 @@
+vendor
+config
+.vscode
+*.yml
+test.json
+.DS_Store
+src/*.json
+*.cfg
+build
