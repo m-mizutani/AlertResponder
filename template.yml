@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  LambdaRoleArn:
+    Type: String
+  StepFunctionRoleArn:
+    Type: String
+  SecretId:
+    Type: String
+  VpcSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  VpcSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  NotifyStreamArn:
+    Type: String
+  
+Resources:
+  AlertMap:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: alert_key
+        AttributeType: S
+      KeySchema:
+      - AttributeName: alert_key
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+
+  ReportData:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: report_id
+        AttributeType: S
+      - AttributeName: section_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: report_id
+        KeyType: HASH
+      - AttributeName: section_id
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+    Type: AWS::DynamoDB::Table
+
+  PostTable:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: report_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: report_id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+    Type: AWS::DynamoDB::Table
+    
+  TaskStream:
+    Properties:
+      RetentionPeriodHours: 24
+      ShardCount: 1
+    Type: AWS::Kinesis::Stream
+
+  DelayMachineDispatcher:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName:
+        Fn::Sub: ["${StackName}-dm-dispatcher", {"StackName": {"Ref": "AWS::StackName"} }]
+      RoleArn:
+        Ref: StepFunctionRoleArn
+      DefinitionString:
+        !Sub
+          - |-
+            {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":5},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
+          - {lambdaArn: !GetAtt [ Dispatcher, Arn ]}
+
+  DelayMachineReviewer:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName:
+        Fn::Sub: ["${StackName}-dm-reviewer", {"StackName": {"Ref": "AWS::StackName"} }]
+      RoleArn:
+        Ref: StepFunctionRoleArn
+      DefinitionString:
+        !Sub
+          - |-
+            {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":30},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
+          - {lambdaArn: !GetAtt [ Reviewer, Arn ]}
+
+  Receptor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: receptor
+      Runtime: go1.x
+      CodeUri: build
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          ALERT_MAP:
+            Fn::Sub: ${AlertMap}
+          STATE_MACHINE:
+            Ref: DelayMachineDispatcher
+      Role:
+        Ref: LambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds:
+          Ref: VpcSecurityGroups
+        SubnetIds:
+          Ref: VpcSubnetIds
+
+  Dispatcher:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dispatcher
+      Runtime: go1.x
+      CodeUri: build
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          STATE_MACHINE:
+            Ref: DelayMachineReviewer
+          STREAM_NAME:
+            Fn::Sub: ${TaskStream}
+      Role:
+        Ref: LambdaRoleArn
+
+  Reviewer:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: reviewer
+      Runtime: go1.x
+      CodeUri: build
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          SECRET_ID:
+            Ref: SecretId
+          STREAM_NAME:
+            Fn::Sub: ${TaskStream}            
+      Role:
+        Ref: LambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds:
+          Ref: VpcSecurityGroups
+        SubnetIds:
+          Ref: VpcSubnetIds
+
+  GheConnector:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ghe-connector
+      Runtime: go1.x
+      CodeUri: build
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          SECRET_ID:
+            Ref: SecretId
+          STREAM_NAME:
+            Fn::Sub: ${TaskStream}            
+      Role:
+        Ref: LambdaRoleArn
+      VpcConfig:
+        SecurityGroupIds:
+          Ref: VpcSecurityGroups
+        SubnetIds:
+          Ref: VpcSubnetIds
+          
