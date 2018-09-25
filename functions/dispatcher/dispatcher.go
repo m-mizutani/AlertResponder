@@ -51,11 +51,6 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 		return "", err
 	}
 
-	err = lib.ExecDelayMachine(os.Getenv("STATE_MACHINE"), arn.Region(), reportData)
-	if err != nil {
-		return "", err
-	}
-
 	return "done", nil
 }
 

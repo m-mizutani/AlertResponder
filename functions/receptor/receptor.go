@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"log"
@@ -9,9 +8,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	lambdaService "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
 )
@@ -60,52 +56,53 @@ func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 	return alerts, nil
 }
 
+func alertToReport(cfg *Config, alert *lib.Alert) (*lib.Report, error) {
+	lib.Dump("alert", alert)
+	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
+
+	reportID, err := alertMap.Lookup(alert.Alert.ID, alert.Alert.Rule)
+	if err != nil {
+		return nil, err
+	}
+
+	if reportID == nil {
+		// Existing alert issue is not found
+		reportID, err = alertMap.Create(alert.Alert.ID, alert.Alert.Rule)
+
+		if err != nil {
+			return nil, errors.Wrap(err, "Failt to create a new alert map")
+		}
+		log.Printf("Created a new reportDI: %s", *reportID)
+	}
+
+	report := lib.NewReport(*reportID, alert)
+
+	return report, nil
+}
+
 // Handler is main logic of Emitter
 func Handler(cfg Config, alerts []lib.Alert) (string, error) {
 	log.Printf("Start handling %d alert(s)\n", len(alerts))
 
-	client := lambdaService.New(session.New(), &aws.Config{Region: aws.String(cfg.Region)})
-
-	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
-
 	for _, alert := range alerts {
-		log.Printf("alert = %v\n", alert.Alert)
-
-		reportID, err := alertMap.Lookup(alert.Alert.ID, alert.Alert.Rule)
+		report, err := alertToReport(&cfg, &alert)
 		if err != nil {
 			return "", err
 		}
 
-		if reportID == nil {
-			// Existing alert issue is not found
-			reportID, err = alertMap.Create(alert.Alert.ID, alert.Alert.Rule)
-
-			if err != nil {
-				return "", errors.Wrap(err, "Failt to create a new alert map")
-			}
-			log.Printf("Created a new reportDI: %s", *reportID)
+		err = lib.ExecDelayMachine(os.Getenv("DISPATCH_MACHINE"), cfg.Region, report)
+		if err != nil {
+			return "", errors.Wrap(err, "Fail to start DispatchMachine")
 		}
 
-		report := lib.NewReport(*reportID, &alert)
-
-		reportData, err := json.Marshal(&report)
+		err = lib.ExecDelayMachine(os.Getenv("REVIEW_MACHINE"), cfg.Region, report)
 		if err != nil {
-			return "", errors.Wrap(err, "Fail to marshal report data")
+			return "", errors.Wrap(err, "Fail to start ReviewMachine")
 		}
 
-		result, err := client.InvokeAsync(&lambdaService.InvokeAsyncInput{
-			FunctionName: aws.String(cfg.ReportTo),
-			InvokeArgs:   aws.ReadSeekCloser(bytes.NewReader(reportData)),
-		})
-		log.Println("invoke result: ", result)
-
+		err = lib.PublishSnsMessage(os.Getenv("REPORT_LINE"), cfg.Region, report)
 		if err != nil {
-			return "", errors.Wrap(err, "Fail to invoke report-to lambda")
-		}
-
-		err = lib.ExecDelayMachine(os.Getenv("STATE_MACHINE"), cfg.Region, reportData)
-		if err != nil {
-			return "", errors.Wrap(err, "Fail to start StateMachine")
+			return "", err
 		}
 
 		log.Println("put alert to task stream")

@@ -26,7 +26,15 @@ Conditions:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
   NotifyStreamAvailable:
     Fn::Not: [!Equals [!Ref NotifyStreamArn, ""]]
-    
+
+Globals:
+  Function:
+    Runtime: go1.x
+    CodeUri: build
+    Timeout: 30
+    MemorySize: 128
+
+
 Resources:
   AlertMap:
     Type: AWS::DynamoDB::Table
@@ -76,7 +84,7 @@ Resources:
       StateMachineName:
         Fn::Sub: ["${StackName}-delay-dispatcher", {"StackName": {"Ref": "AWS::StackName"} }]
       RoleArn:
-        Ref: StepFunctionRoleArn
+        Fn::If: [ StepFunctionRoleRequired, {"Fn::GetAtt": StepFunctionRole.Arn}, {Ref: StepFunctionRoleArn} ]
       DefinitionString:
         !Sub
           - |-
@@ -107,10 +115,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: receptor
-      Runtime: go1.x
-      CodeUri: build
-      Timeout: 30
-      MemorySize: 128
+      Role:
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
       Environment:
         Variables:
           ALERT_MAP:
@@ -121,17 +127,12 @@ Resources:
             Ref: PolicyInvoker
           REPORT_LINE:
             Ref: ReportLine
-      Role:
-        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+
 
   Dispatcher:
     Type: AWS::Serverless::Function
     Properties:
       Handler: dispatcher
-      Runtime: go1.x
-      CodeUri: build
-      Timeout: 30
-      MemorySize: 128
       Environment:
         Variables:
           STREAM_NAME:
@@ -143,10 +144,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: reviewer
-      Runtime: go1.x
-      CodeUri: build
-      Timeout: 30
-      MemorySize: 128
       Environment:
         Variables:
           REPORT_LINE:
@@ -160,10 +157,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: reviewer
-      Runtime: go1.x
-      CodeUri: build
-      Timeout: 30
-      MemorySize: 128
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
           
@@ -205,6 +198,12 @@ Resources:
                   - Fn::Sub: [ "${TableArn}/index/*", { TableArn: { "Fn::GetAtt": AlertMap.Arn } } ]
                   - Fn::GetAtt: ReportData.Arn
                   - Fn::Sub: [ "${TableArn}/index/*", { TableArn: { "Fn::GetAtt": ReportData.Arn } } ]
+              - Effect: "Allow"
+                Action:
+                  - sns:Publish
+                Resource:
+                  - Ref: ReportLine
+                  - Ref: IncidentLine
               - Effect: "Allow"
                 Action:
                   - states:StartExecution

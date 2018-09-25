@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sfn"
+	"github.com/aws/aws-sdk-go/service/sns"
+
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +56,12 @@ func NewArn(arn string) Arn {
 	return obj
 }
 
-func ExecDelayMachine(stateMachineARN string, region string, data []byte) error {
+func ExecDelayMachine(stateMachineARN string, region string, report *Report) error {
+	data, err := json.Marshal(report)
+	if err != nil {
+		return errors.Wrap(err, "Fail to marshal report data")
+	}
+
 	ssn := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	}))
@@ -69,6 +77,31 @@ func ExecDelayMachine(stateMachineARN string, region string, data []byte) error 
 	}
 
 	log.Println(resp)
+
+	return nil
+}
+
+func PublishSnsMessage(topicArn, region string, report *Report) error {
+	data, err := json.Marshal(report)
+	if err != nil {
+		return errors.Wrap(err, "Fail to marshal report data")
+	}
+
+	ssn := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	}))
+	snsService := sns.New(ssn)
+
+	resp, err := snsService.Publish(&sns.PublishInput{
+		Message:  aws.String(string(data)),
+		TopicArn: aws.String(topicArn),
+	})
+
+	Dump("SNS response", resp)
+
+	if err != nil {
+		return errors.Wrap(err, "Fail to publish report")
+	}
 
 	return nil
 }
