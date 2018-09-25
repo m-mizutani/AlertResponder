@@ -26,10 +26,6 @@
 
 
 [[constraint]]
-  branch = "master"
-  name = "ghe.ckpd.co/security/slam-alert-responder"
-
-[[constraint]]
   name = "github.com/aws/aws-lambda-go"
   version = "1.6.0"
 

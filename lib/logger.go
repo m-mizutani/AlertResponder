@@ -1,16 +1,15 @@
 package lib
 
 import (
-	"encoding/json"
 	"log"
+	"strings"
+
+	"github.com/k0kubun/pp"
 )
 
 // Dump output logs for AWS Lambda
-func DumpJson(name string, v interface{}) {
-	jdata, err := json.Marshal(v)
-	if err != nil {
-		log.Printf("Error, %s: %s\n", name, err)
-	} else {
-		log.Printf("%s = %s\n", name, string(jdata))
-	}
+func Dump(name string, v interface{}) {
+	data := pp.Sprintln(v)
+	line := strings.Replace(data, "\n", "", -1)
+	log.Printf("%s = %s\n", name, line)
 }

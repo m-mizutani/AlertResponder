@@ -3,19 +3,33 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   LambdaRoleArn:
     Type: String
+    Default: ""
   StepFunctionRoleArn:
     Type: String
-  SecretId:
-    Type: String
-  VpcSecurityGroups:
-    Type: List<AWS::EC2::SecurityGroup::Id>
-  VpcSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
+    Default: ""
   NotifyStreamArn:
     Type: String
-  
+    Default: ""
+  PolicyLambdaArn:
+    Type: String
+  InspectionDelay:
+    Type: Number
+    Default: 300
+  ReviewDelay:
+    Type: Number
+    Default: 600
+
+Conditions:
+  LambdaRoleRequired:
+    Fn::Equals: [ { Ref: LambdaRoleArn }, "" ]
+  StepFunctionRoleRequired:
+    Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
+  NotifyStreamAvailable:
+    Fn::Not: [!Equals [!Ref NotifyStreamArn, ""]]
+    
 Resources:
   AlertMap:
+    Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
       - AttributeName: alert_key
@@ -29,19 +43,19 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
-    Type: AWS::DynamoDB::Table
 
   ReportData:
+    Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
       - AttributeName: report_id
         AttributeType: S
-      - AttributeName: section_id
+      - AttributeName: data_id
         AttributeType: S
       KeySchema:
       - AttributeName: report_id
         KeyType: HASH
-      - AttributeName: section_id
+      - AttributeName: data_id
         KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
@@ -49,20 +63,6 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
-    Type: AWS::DynamoDB::Table
-
-  PostTable:
-    Properties:
-      AttributeDefinitions:
-      - AttributeName: report_id
-        AttributeType: S
-      KeySchema:
-      - AttributeName: report_id
-        KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
-    Type: AWS::DynamoDB::Table
     
   TaskStream:
     Properties:
@@ -70,31 +70,38 @@ Resources:
       ShardCount: 1
     Type: AWS::Kinesis::Stream
 
-  DelayMachineDispatcher:
+  DelayDispatcher:
     Type: AWS::StepFunctions::StateMachine
     Properties:
       StateMachineName:
-        Fn::Sub: ["${StackName}-dm-dispatcher", {"StackName": {"Ref": "AWS::StackName"} }]
+        Fn::Sub: ["${StackName}-delay-dispatcher", {"StackName": {"Ref": "AWS::StackName"} }]
       RoleArn:
         Ref: StepFunctionRoleArn
       DefinitionString:
         !Sub
           - |-
-            {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":5},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
-          - {lambdaArn: !GetAtt [ Dispatcher, Arn ]}
+            {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":${delay}},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
+          - {lambdaArn: !GetAtt [ Dispatcher, Arn ], delay: {Ref: InspectionDelay }}
 
-  DelayMachineReviewer:
+  PolicyInvoker:
     Type: AWS::StepFunctions::StateMachine
     Properties:
       StateMachineName:
-        Fn::Sub: ["${StackName}-dm-reviewer", {"StackName": {"Ref": "AWS::StackName"} }]
+        Fn::Sub: ["${StackName}-policy-invoker", {"StackName": {"Ref": "AWS::StackName"} }]
       RoleArn:
-        Ref: StepFunctionRoleArn
+        Fn::If: [ StepFunctionRoleRequired, {"Fn::GetAtt": StepFunctionRole.Arn}, {Ref: StepFunctionRoleArn} ]
       DefinitionString:
         !Sub
           - |-
-            {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":30},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
-          - {lambdaArn: !GetAtt [ Reviewer, Arn ]}
+            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Exec","Seconds":${delay}},"Exec":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.Error","Next":"ErrorHandler"}],"ResultPath":"$.Result","Next":"Review"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Review":{"Type":"Task","Resource":"${reviewerArn}","End":true}}}
+          - policyLambdaArn:
+              Ref: PolicyLambdaArn
+            reviewerArn: 
+              Fn::GetAtt: Reviewer.Arn
+            errorHandlerArn:
+              Fn::GetAtt: ErrorHandler.Arn
+            delay:
+              Ref: ReviewDelay
 
   Receptor:
     Type: AWS::Serverless::Function
@@ -108,15 +115,14 @@ Resources:
         Variables:
           ALERT_MAP:
             Fn::Sub: ${AlertMap}
-          STATE_MACHINE:
-            Ref: DelayMachineDispatcher
+          DISPATCH_MACHINE:
+            Ref: DelayDispatcher
+          REVIEW_MACHINE:
+            Ref: PolicyInvoker
+          REPORT_LINE:
+            Ref: ReportLine
       Role:
-        Ref: LambdaRoleArn
-      VpcConfig:
-        SecurityGroupIds:
-          Ref: VpcSecurityGroups
-        SubnetIds:
-          Ref: VpcSubnetIds
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
   Dispatcher:
     Type: AWS::Serverless::Function
@@ -128,13 +134,11 @@ Resources:
       MemorySize: 128
       Environment:
         Variables:
-          STATE_MACHINE:
-            Ref: DelayMachineReviewer
           STREAM_NAME:
             Fn::Sub: ${TaskStream}
       Role:
-        Ref: LambdaRoleArn
-
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+        
   Reviewer:
     Type: AWS::Serverless::Function
     Properties:
@@ -145,37 +149,98 @@ Resources:
       MemorySize: 128
       Environment:
         Variables:
-          SECRET_ID:
-            Ref: SecretId
-          STREAM_NAME:
-            Fn::Sub: ${TaskStream}            
+          REPORT_LINE:
+            Ref: ReportLine
+          INCIDENT_LINE:
+            Ref: IncidentLine
       Role:
-        Ref: LambdaRoleArn
-      VpcConfig:
-        SecurityGroupIds:
-          Ref: VpcSecurityGroups
-        SubnetIds:
-          Ref: VpcSubnetIds
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
-  GheConnector:
+  ErrorHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: ghe-connector
+      Handler: reviewer
       Runtime: go1.x
       CodeUri: build
       Timeout: 30
       MemorySize: 128
-      Environment:
-        Variables:
-          SECRET_ID:
-            Ref: SecretId
-          STREAM_NAME:
-            Fn::Sub: ${TaskStream}            
       Role:
-        Ref: LambdaRoleArn
-      VpcConfig:
-        SecurityGroupIds:
-          Ref: VpcSecurityGroups
-        SubnetIds:
-          Ref: VpcSubnetIds
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
           
+  ReportLine:
+    Type: AWS::SNS::Topic
+
+  IncidentLine:
+    Type: AWS::SNS::Topic
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Condition: LambdaRoleRequired
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: ["lambda.amazonaws.com"]
+            Action: ["sts:AssumeRole"]
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: "AlertResponderLambdaPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource:
+                  - Fn::GetAtt: AlertMap.Arn
+                  - Fn::Sub: [ "${TableArn}/index/*", { TableArn: { "Fn::GetAtt": AlertMap.Arn } } ]
+                  - Fn::GetAtt: ReportData.Arn
+                  - Fn::Sub: [ "${TableArn}/index/*", { TableArn: { "Fn::GetAtt": ReportData.Arn } } ]
+              - Effect: "Allow"
+                Action:
+                  - states:StartExecution
+                Resource:
+                  - Fn::Sub:
+                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-delay-dispatcher"
+                    - StackName: {"Ref": "AWS::StackName"}
+                      Region: {"Ref": "AWS::Region"}
+                      Account: {"Ref": "AWS::AccountId" }
+                  - Fn::Sub:
+                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-delay-dispatcher"
+                    - StackName: {"Ref": "AWS::StackName"}
+                      Region: {"Ref": "AWS::Region"}
+                      Account: {"Ref": "AWS::AccountId" }
+
+  StepFunctionRole:
+    Type: AWS::IAM::Role
+    Condition: StepFunctionRoleRequired
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: {"Fn::Sub": ["states.${Region}.amazonaws.com", {"Region": {"Ref": "AWS::Region" }}]}
+            Action: ["sts:AssumeRole"]
+      Path: "/"
+      Policies:
+        - PolicyName: "AlertResponderLambdaInvokePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - Ref: PolicyLambdaArn
+                  - Fn::GetAtt: ErrorHandler.Arn
+                  - Fn::GetAtt: Reviewer.Arn

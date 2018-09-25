@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
@@ -10,9 +9,9 @@ import (
 
 // HandleRequest is Lambda handler
 func HandleRequest(ctx context.Context, alert lib.Alert) (string, error) {
-	log.Println(alert)
+	lib.Dump("alert", alert)
 
-	return "Yes, Yes, Yes. Oh my god", nil
+	return "Good", nil
 }
 
 func main() {

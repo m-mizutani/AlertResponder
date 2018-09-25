@@ -2,8 +2,6 @@ package lib
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -11,8 +9,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.com/pkg/errors"
 )
@@ -55,68 +51,6 @@ func NewArn(arn string) Arn {
 	obj := Arn{arn: arn}
 	obj.args = strings.Split(arn, ":")
 	return obj
-}
-
-// DecryptKMS decrypts encypted text by KMS
-func DecryptKMS(encrypted, region string) (string, error) {
-	ssn := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
-
-	encBin, err := base64.StdEncoding.DecodeString(encrypted)
-	if err != nil {
-		return "", errors.Wrap(err, "Fail to decode encrypted Github token")
-	}
-
-	svc := kms.New(ssn)
-	input := &kms.DecryptInput{
-		CiphertextBlob: encBin,
-	}
-
-	result, err := svc.Decrypt(input)
-	if err != nil {
-		return "", errors.Wrap(err, "Fail to decrypt Github token")
-	}
-
-	return string(result.Plaintext), nil
-}
-
-type SecretValues struct {
-	GitHubToken    string `json:"github_token"`
-	GitHubEndpoint string `json:"github_endpoint"`
-	GitHubRepo     string `json:"github_repo"`
-
-	GraylogEndpoint string `json:"graylog_endpoint"`
-	GraylogToken    string `json:"graylog_token"`
-
-	VirusTotalToken string `json:"virustotal_token"`
-
-	HybridAnalysisToken string `json:"hybridanalysis_token"`
-}
-
-func GetSecretValues(secretID, region string) (*SecretValues, error) {
-	ssn := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
-	svc := secretsmanager.New(ssn)
-
-	input := &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(secretID),
-	}
-
-	result, err := svc.GetSecretValue(input)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Fail to retrieve secret values")
-	}
-
-	values := SecretValues{}
-	err = json.Unmarshal([]byte(*result.SecretString), &values)
-	if err != nil {
-		return nil, errors.Wrap(err, "Fail to parse secret values as JSON")
-	}
-
-	return &values, nil
 }
 
 func ExecDelayMachine(stateMachineARN string, region string, data []byte) error {
