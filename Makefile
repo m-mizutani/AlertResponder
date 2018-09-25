@@ -7,7 +7,10 @@ PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRo
 TEMPLATE_FILE=template.yml
 LIBS=lib/*.go
 
-all: sam.yml
+all: cli
+
+cli:
+	go build -o arcli
 
 build/receptor: ./functions/receptor/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/receptor ./functions/receptor/

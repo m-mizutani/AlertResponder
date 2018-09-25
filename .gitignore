@@ -7,3 +7,4 @@ test.json
 src/*.json
 *.cfg
 build
+arcli
