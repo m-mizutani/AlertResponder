@@ -10,6 +10,9 @@ Parameters:
   NotifyStreamArn:
     Type: String
     Default: ""
+  NotifyQueueArn:
+    Type: String
+    Default: ""
   PolicyLambdaArn:
     Type: String
   InspectionDelay:
@@ -26,6 +29,8 @@ Conditions:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
   NotifyStreamAvailable:
     Fn::Not: [!Equals [!Ref NotifyStreamArn, ""]]
+  NotifyQueueAvailable:
+    Fn::Not: [!Equals [!Ref NotifyQueueArn, ""]]
 
 Globals:
   Function:
@@ -34,8 +39,9 @@ Globals:
     Timeout: 30
     MemorySize: 128
 
-
 Resources:
+  # --------------------------------------------------------
+  # DynamoDBs
   AlertMap:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -72,12 +78,16 @@ Resources:
         AttributeName: ttl
         Enabled: true
     
+  # --------------------------------------------------------
+  # Kinesis Stream
   TaskStream:
     Properties:
       RetentionPeriodHours: 24
       ShardCount: 1
     Type: AWS::Kinesis::Stream
 
+  # --------------------------------------------------------
+  # StateMachines
   DelayDispatcher:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -111,6 +121,8 @@ Resources:
             delay:
               Ref: ReviewDelay
 
+  # --------------------------------------------------------
+  # Lambda functions
   Receptor:
     Type: AWS::Serverless::Function
     Properties:
@@ -159,13 +171,17 @@ Resources:
       Handler: reviewer
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
-          
+
+  # --------------------------------------------------------
+  # SNS topics
   ReportLine:
     Type: AWS::SNS::Topic
 
   IncidentLine:
     Type: AWS::SNS::Topic
 
+  # --------------------------------------------------------
+  # IAM Roles
   LambdaRole:
     Type: AWS::IAM::Role
     Condition: LambdaRoleRequired
