@@ -126,6 +126,7 @@ Resources:
   Receptor:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: build
       Handler: receptor
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
@@ -144,6 +145,7 @@ Resources:
   Dispatcher:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: build
       Handler: dispatcher
       Environment:
         Variables:
@@ -155,6 +157,7 @@ Resources:
   Reviewer:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: build
       Handler: reviewer
       Environment:
         Variables:
@@ -168,6 +171,7 @@ Resources:
   ErrorHandler:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: build
       Handler: reviewer
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]

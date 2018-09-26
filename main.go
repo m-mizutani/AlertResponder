@@ -6,13 +6,13 @@ import (
 	flags "github.com/jessevdk/go-flags"
 )
 
+type options struct {
+	TestConfig string `short:"t" long:"testconfig" description:"Integration test config" default:"test/emitter/test.json"`
+	Verbose    bool   `short:"v" long:"verboes"`
+}
+
 func main() {
-	var opts struct {
-		TestConfig string `short:"t" long:"testconfig" description:"Integration test config" default:"itest.json"`
-		Region     string `short:"r" long:"region" description:"AWS region"`
-		StackName  string `short:"s" long:"stack-name" description:"Stack Name"`
-		Verbose    bool   `short:"v" long:"verboes"`
-	}
+	opts := options{}
 
 	args, err := flags.Parse(&opts)
 	if err != nil {
@@ -24,7 +24,7 @@ func main() {
 
 	switch args[0] {
 	case "test":
-		doIntegrationTest(opts.StackName, opts.Region, opts.Verbose)
+		doIntegrationTest(&opts)
 	default:
 		log.Fatal("not avaialble command, choose from [test]")
 	}

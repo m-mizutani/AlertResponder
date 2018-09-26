@@ -8,8 +8,8 @@ import (
 )
 
 // HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, alert lib.Alert) (string, error) {
-	lib.Dump("alert", alert)
+func HandleRequest(ctx context.Context, v interface{}) (string, error) {
+	lib.Dump("data", v)
 
 	return "Good", nil
 }

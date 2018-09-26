@@ -42,11 +42,14 @@
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
+    "private/protocol/restjson",
     "private/protocol/xml/xmlutil",
+    "service/cloudformation",
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
     "service/dynamodb/dynamodbiface",
     "service/kinesis",
+    "service/lambda",
     "service/sfn",
     "service/sns",
     "service/sts"
@@ -152,6 +155,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7dd765c4c5501dd67916bf0dc63c3411253e0a0552cadc140a82bd8d06bf04a5"
+  inputs-digest = "4c0d6b9365a25efefc9a9790fd2c5934a0a67d005f3cee3c938dad00cba21338"
   solver-name = "gps-cdcl"
   solver-version = 1

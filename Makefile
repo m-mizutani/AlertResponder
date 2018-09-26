@@ -3,9 +3,10 @@ AR_CONFIG ?= "param.cfg"
 CODE_S3_BUCKET := $(shell cat $(AR_CONFIG) | grep CodeS3Bucket | cut -d = -f 2)
 CODE_S3_PREFIX := $(shell cat $(AR_CONFIG) | grep CodeS3Prefix | cut -d = -f 2)
 STACK_NAME := $(shell cat $(AR_CONFIG) | grep StackName | cut -d = -f 2)
-PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e NotifyStreamArn -e PolicyLambdaArn | tr '\n' ' ')
+PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e NotifyStreamArn -e PolicyLambdaArn -e InspectionDelay -e ReviewDelay | tr '\n' ' ')
 TEMPLATE_FILE=template.yml
 LIBS=lib/*.go
+
 
 all: cli
 
