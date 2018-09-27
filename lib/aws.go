@@ -3,7 +3,6 @@ package lib
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
@@ -76,7 +75,7 @@ func ExecDelayMachine(stateMachineARN string, region string, report *Report) err
 		return err
 	}
 
-	log.Println(resp)
+	Dump("startExecution response", resp)
 
 	return nil
 }

@@ -46,10 +46,10 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-      - AttributeName: alert_key
+      - AttributeName: alert_id
         AttributeType: S
       KeySchema:
-      - AttributeName: alert_key
+      - AttributeName: alert_id
         KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: 1
@@ -226,6 +226,12 @@ Resources:
                   - Ref: IncidentLine
               - Effect: "Allow"
                 Action:
+                  - kinesis:PutRecord
+                  - kinesis:PutRecords
+                Resource:
+                  - Fn::GetAtt: TaskStream.Arn
+              - Effect: "Allow"
+                Action:
                   - states:StartExecution
                 Resource:
                   - Fn::Sub:
@@ -234,7 +240,7 @@ Resources:
                       Region: {"Ref": "AWS::Region"}
                       Account: {"Ref": "AWS::AccountId" }
                   - Fn::Sub:
-                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-delay-dispatcher"
+                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-policy-invoker"
                     - StackName: {"Ref": "AWS::StackName"}
                       Region: {"Ref": "AWS::Region"}
                       Account: {"Ref": "AWS::AccountId" }
@@ -261,5 +267,6 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - Ref: PolicyLambdaArn
+                  - Fn::GetAtt: Dispatcher.Arn
                   - Fn::GetAtt: ErrorHandler.Arn
                   - Fn::GetAtt: Reviewer.Arn

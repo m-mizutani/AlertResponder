@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -32,7 +31,7 @@ func kinesisPutRecord(streamName, region string, alertData []byte) error {
 		return err
 	}
 
-	log.Println("Kinesis PutRecord: ", result)
+	lib.Dump("Kinesis PutRecord", result)
 
 	return nil
 }
@@ -44,11 +43,20 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 		return "", err
 	}
 
-	reportData, err := json.Marshal(&report)
+	lib.Dump("report", report)
 
-	err = kinesisPutRecord(os.Getenv("STREAM_NAME"), arn.Region(), reportData)
-	if err != nil {
-		return "", err
+	for _, attr := range report.Alert.Attrs {
+		task := lib.Task{
+			Attr:     attr,
+			ReportID: report.ID,
+		}
+
+		lib.Dump("task", task)
+		taskData, err := json.Marshal(&task)
+		err = kinesisPutRecord(os.Getenv("STREAM_NAME"), arn.Region(), taskData)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return "done", nil

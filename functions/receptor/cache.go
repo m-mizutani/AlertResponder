@@ -25,10 +25,10 @@ func NewAlertMap(tableName, region string) *AlertMap {
 }
 
 type AlertRecord struct {
-	AlertKey string       `json:"alert_key"`
-	AlertID  string       `json:"alert_id"`
-	Rule     string       `json:"rule"`
-	ReportID lib.ReportID `json:"report_id"`
+	AlertID  string       `dynamo:"alert_id"`
+	AlertKey string       `dynamo:"alert_key"`
+	Rule     string       `dynamo:"rule"`
+	ReportID lib.ReportID `dynamo:"report_id"`
 }
 
 func GenAlertKey(alertID, rule string) string {
@@ -36,11 +36,11 @@ func GenAlertKey(alertID, rule string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
 
-func (x *AlertMap) Lookup(alertID, rule string) (*lib.ReportID, error) {
-	alertKey := GenAlertKey(alertID, rule)
+func (x *AlertMap) Lookup(alertKey, rule string) (*lib.ReportID, error) {
+	alertID := GenAlertKey(alertKey, rule)
 
 	record := AlertRecord{}
-	err := x.table.Get("alert_key", alertKey).One(&record)
+	err := x.table.Get("alert_id", alertID).One(&record)
 	if err == dynamo.ErrNotFound {
 		return nil, nil
 	}
@@ -51,8 +51,8 @@ func (x *AlertMap) Lookup(alertID, rule string) (*lib.ReportID, error) {
 	return &record.ReportID, nil
 }
 
-func (x *AlertMap) Create(alertID, rule string) (*lib.ReportID, error) {
-	alertKey := GenAlertKey(alertID, rule)
+func (x *AlertMap) Create(alertKey, rule string) (*lib.ReportID, error) {
+	alertID := GenAlertKey(alertKey, rule)
 
 	record := AlertRecord{
 		AlertKey: alertKey,
