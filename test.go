@@ -233,6 +233,26 @@ func doIntegrationTest(opt *options) {
 
 	pp.Println(task)
 
-	log.Println("=== Exit integration test ===")
+	var section lib.Section
+	section.Title = "Test"
+	section.Text = []string{
+		"# Test",
+		"",
+		"This is test message.",
+	}
+	remote := lib.ReportRemoteHost{
+		IPAddr: []string{task.Attr.Value},
+	}
+	section.RemoteHost = &remote
+
+	reportData := lib.NewReportData(lib.ReportID(reportID))
+	reportData.SetSection(section)
+
+	err = reportData.Submit(params.ReportData, params.Region)
+	if err != nil {
+		log.Fatal("Fail to submit report data", err)
+	}
+
+	log.Println("=== Completed Tests ===")
 	return
 }

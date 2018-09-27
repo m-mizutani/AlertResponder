@@ -1,8 +1,14 @@
 package lib
 
 import (
+	"encoding/json"
+	"log"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/guregu/dynamo"
+	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -34,11 +40,65 @@ type ReportRemoteHost struct {
 	RelatedDomains []string `json:"related_domains"`
 }
 
-type ReportData struct {
+type Section struct {
 	Title      string            `json:"title"`
 	Text       []string          `json:"text"`
 	LocalHost  *ReportLocalHost  `json:"localhost"`
 	RemoteHost *ReportRemoteHost `json:"remotehost"`
+}
+
+type ReportData struct {
+	ReportID   ReportID  `dynamo:"report_id"`
+	DataID     string    `dynamo:"data_id"`
+	Data       []byte    `dynamo:"data"`
+	TimeToLive time.Time `dynamo:"ttl"`
+}
+
+func NewReportData(reportID ReportID) *ReportData {
+	data := ReportData{
+		ReportID: reportID,
+		DataID:   uuid.NewV4().String(),
+	}
+
+	return &data
+}
+
+func (x *ReportData) SetSection(section Section) {
+	data, err := json.Marshal(&section)
+	if err != nil {
+		log.Println("Fail to marshal report section:", section)
+	}
+
+	x.Data = data
+}
+
+func (x *ReportData) Section() *Section {
+	if len(x.Data) == 0 {
+		return nil
+	}
+
+	var section Section
+	err := json.Unmarshal(x.Data, &section)
+	if err != nil {
+		log.Println("Invalid report section data foramt", string(x.Data))
+		return nil
+	}
+
+	return &section
+}
+
+func (x *ReportData) Submit(tableName, region string) error {
+	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(region)})
+	table := db.Table(tableName)
+
+	x.TimeToLive = time.Now().Add(time.Second * 864000)
+
+	err := table.Put(x).Run()
+	if err != nil {
+		return errors.Wrap(err, "Fail to put report data")
+	}
+
+	return nil
 }
 
 type Report struct {
