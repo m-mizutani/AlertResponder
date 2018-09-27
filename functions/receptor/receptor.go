@@ -113,7 +113,7 @@ func Handler(cfg Config, alerts []lib.Alert) (string, error) {
 
 // HandleRequest is Lambda handler
 func HandleRequest(ctx context.Context, event events.KinesisEvent) (string, error) {
-	log.Println("Event = ", event)
+	lib.Dump("Event", event)
 
 	cfg, err := buildConfig(ctx)
 	if err != nil {
