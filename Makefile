@@ -7,7 +7,6 @@ PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRo
 TEMPLATE_FILE=template.yml
 LIBS=lib/*.go
 
-
 all: cli
 
 cli:
@@ -23,6 +22,8 @@ build/publisher: ./functions/publisher/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/publisher ./functions/publisher/
 build/error-handler: ./functions/compiler/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/error-handler ./functions/error-handler/
+
+functions: build/receptor build/dispatcher build/compiler build/publisher build/error-handler
 
 test:
 	go test -v ./lib/

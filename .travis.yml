@@ -1,0 +1,20 @@
+language: go
+branches:
+  only:
+  - master
+go_import_path: github.com/m-mizutani/AlertResponder
+go:
+- 1.10.x
+before_install:
+- go get github.com/golang/dep/...
+install:
+- "$GOPATH/bin/dep ensure"
+script:
+- touch param.cfg
+- pip install --user awscli
+- make functions
+# - "./scripts/package-to-all-region.sh"
+env:
+  global:
+  - secure: NROfLwMTq5qn47rkWS3osprPH0F83bIwCJ5hS5NqFIWRzLPYLKMLYpNVNG1c0j58n1oaViIK7B2rrecU33XZv7rmn4zbhGvE4kLYUm4BNnYPBiy2XYDmxUIE52E7gDnTOLWgFT3KbUhVu+/cyg/W7zPJn3h90kZwVIYJfDDlCpFlcsSTQnoKCr4nCgwvWX9yUgF+DmPXLbktmj0GOq0akE7Ep1zcCQ+CxZqs9rnQ7VTUrv715Xm1ryupZzqGrsKakpH4cQJX96b7W1VIacow3PTBABHtantyS+XfG/55TRG5eHl3fctn99+VbiAFD22MybJGYVxwcRczvkPSlhxPOCyrUdYnv8XX/xziEqP32YBYg43oV4RztizGRtIaE9aZDPYmhZZBCXDl59S8ATyQf9NZ0Aku+xPfMQQMVGTAQx6+XkIpQ8YgW/F2NacJF0Ohf6BNEuNipARxsQeiPLBvYi6DjAF3TpCWduOh0DHcBQRzaNIMU9EWb4S/Wuk3CQE9dIsyiUFLysLAz0rC08E+9T8JdWfkY3CdtfipeKr4AFJgHUkZrEu2dCyQlFe3oFiUc+KJtIsZCrzvpHJr2B06Pn2J74YtKl/18Qs/nx91MWXQIlwW3Cb0TPw6n1JVi8eyTs8w8jljKBthedD2tY+N84Leg6x2YPHDhlAd4RD63jE=
+  - secure: RwXdDFkvXVcfcvTxS8OsnfTXZCxRqsC3+zwjpbxHM7pacNtEB94YLDrhFFDBRb5faqNbAuptryYv7K7miAZM5qMZcRpoGgngGggQOqJFxMzbSNwfMfWYpAQFQrh7LqvicT6jxuC+dz3p14fFVYT+4QI9lbMaXwbFfOy/QBFK/3CHB4bxjR5fjighxLOTde0UTmWM+wnmar3Xl7BcYsLrEsNT/gxxe2dI9iy9mYLtBwqWm7txADAp3dEYGQostIC+QdWj9MoEnYdctLN76S/wKFOtCg1gBtakOjPjQmw1bffm7USIpZoJfdkxmGbwKXT33U4VsgR6bDbhHDHAf58TIOAPE+ZrjeP3JAhqch7XSz91SHNVAHsiE/A2k2ARGMpER6qdvMuFo++AmZxkXyRBJmBFPNIIDbbQtb+E822p2YgV/dpPxD8+7X+EZu5KMuPVETYmgM1gvYLlNoUd1im5IMEceQ99sqjU52YNNIuoE89XE3eAmp8dTfo7NWeBPNlJORiWJAR7PMOdSeJ94QynaTHyXFoNgXm7etikrvVNt5p9MUnHXOOg/k9mJmCbDDYQZB+9ysi02m+a9lvYlCe8ZsazHmxE5Ie6N/FBxiZXKTUSHLmMTyt5SPNeXW4ACcqOe4rTfzQxwS2yZEVsZatCe3lInGUmKWX6RHgaKoX9Yw4=
