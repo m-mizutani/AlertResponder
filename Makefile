@@ -17,15 +17,17 @@ build/receptor: ./functions/receptor/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/receptor ./functions/receptor/
 build/dispatcher: ./functions/dispatcher/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/dispatcher ./functions/dispatcher/
-build/reviewer: ./functions/reviewer/*.go $(LIBS)
-	env GOARCH=amd64 GOOS=linux go build -o build/reviewer ./functions/reviewer/
-build/error-handler: ./functions/reviewer/*.go $(LIBS)
+build/compiler: ./functions/compiler/*.go $(LIBS)
+	env GOARCH=amd64 GOOS=linux go build -o build/compiler ./functions/compiler/
+build/publisher: ./functions/publisher/*.go $(LIBS)
+	env GOARCH=amd64 GOOS=linux go build -o build/publisher ./functions/publisher/
+build/error-handler: ./functions/compiler/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/error-handler ./functions/error-handler/
 
 test:
 	go test -v ./lib/
 
-sam.yml: $(TEMPLATE_FILE) build/receptor build/dispatcher build/reviewer build/error-handler 
+sam.yml: $(TEMPLATE_FILE) build/receptor build/dispatcher build/compiler build/publisher build/error-handler 
 	aws cloudformation package \
 		--template-file $(TEMPLATE_FILE) \
 		--s3-bucket $(CODE_S3_BUCKET) \

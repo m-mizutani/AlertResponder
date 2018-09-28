@@ -101,16 +101,38 @@ func (x *ReportData) Submit(tableName, region string) error {
 	return nil
 }
 
+func FetchReportData(tableName, region string, reportID ReportID) ([]*Section, error) {
+	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(region)})
+	table := db.Table(tableName)
+
+	dataList := []ReportData{}
+	err := table.Get("report_id", reportID).All(&dataList)
+	if err != nil {
+		return nil, errors.Wrap(err, "Fail to fetch report data")
+	}
+
+	sections := []*Section{}
+	for _, data := range dataList {
+		sections = append(sections, data.Section())
+	}
+	return sections, nil
+}
+
+type ReportResult struct {
+	Severity string `json:"severity"`
+}
+
 type Report struct {
-	ID    ReportID      `json:"report_id"`
-	Alert Alert         `json:"alert"`
-	Data  []*ReportData `json:"data"`
+	ID       ReportID      `json:"report_id"`
+	Alert    Alert         `json:"alert"`
+	Sections []*Section    `json:"sections"`
+	Result   *ReportResult `json:"result"`
 }
 
 func NewReport(reportID ReportID, alert *Alert) *Report {
 	report := Report{
-		ID:   reportID,
-		Data: []*ReportData{},
+		ID:       reportID,
+		Sections: []*Section{},
 	}
 	if alert != nil {
 		report.Alert = *alert

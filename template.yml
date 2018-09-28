@@ -111,11 +111,13 @@ Resources:
       DefinitionString:
         !Sub
           - |-
-            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Exec","Seconds":${delay}},"Exec":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.Error","Next":"ErrorHandler"}],"ResultPath":"$.Result","Next":"Review"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Review":{"Type":"Task","Resource":"${reviewerArn}","End":true}}}
+            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
           - policyLambdaArn:
               Ref: PolicyLambdaArn
-            reviewerArn: 
-              Fn::GetAtt: Reviewer.Arn
+            compilerArn:
+              Fn::GetAtt: Compiler.Arn
+            publisherArn: 
+              Fn::GetAtt: Publisher.Arn
             errorHandlerArn:
               Fn::GetAtt: ErrorHandler.Arn
             delay:
@@ -141,7 +143,6 @@ Resources:
           REPORT_LINE:
             Ref: ReportLine
 
-
   Dispatcher:
     Type: AWS::Serverless::Function
     Properties:
@@ -154,17 +155,27 @@ Resources:
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
         
-  Reviewer:
+  Compiler:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: build
-      Handler: reviewer
+      Handler: compiler
+      Environment:
+        Variables:
+          REPORT_DATA:
+            Ref: ReportData
+      Role:
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+
+  Publisher:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build
+      Handler: publisher
       Environment:
         Variables:
           REPORT_LINE:
             Ref: ReportLine
-          INCIDENT_LINE:
-            Ref: IncidentLine
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
@@ -172,16 +183,13 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: build
-      Handler: reviewer
+      Handler: compiler
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
   # --------------------------------------------------------
   # SNS topics
   ReportLine:
-    Type: AWS::SNS::Topic
-
-  IncidentLine:
     Type: AWS::SNS::Topic
 
   # --------------------------------------------------------
@@ -223,7 +231,6 @@ Resources:
                   - sns:Publish
                 Resource:
                   - Ref: ReportLine
-                  - Ref: IncidentLine
               - Effect: "Allow"
                 Action:
                   - kinesis:PutRecord
@@ -269,4 +276,6 @@ Resources:
                   - Ref: PolicyLambdaArn
                   - Fn::GetAtt: Dispatcher.Arn
                   - Fn::GetAtt: ErrorHandler.Arn
-                  - Fn::GetAtt: Reviewer.Arn
+                  - Fn::GetAtt: Compiler.Arn
+                  - Fn::GetAtt: Publisher.Arn
+
