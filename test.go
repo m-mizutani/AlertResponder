@@ -23,8 +23,7 @@ import (
 type testParams struct {
 	StackName           string `json:"StackName"`
 	Region              string `json:"Region"`
-	ReportReceiverArn   string `json:"ReportReceiverArn"`
-	IncidentReceiverArn string `json:"IncidentReceiverArn"`
+	ReportResults   string `json:"ReportResultsArn"`
 	TaskStream          string
 	ReportData          string
 	Receptor            string

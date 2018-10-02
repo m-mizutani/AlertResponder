@@ -38,7 +38,7 @@ cat <<EOF > test.json
 {
   "StackName": "$1",
   "Region": "$Region",
-  "ReportResults": "$ReportResultsArn"
+  "ReportResultsArn": "$ReportResultsArn"
 }
 EOF
 
