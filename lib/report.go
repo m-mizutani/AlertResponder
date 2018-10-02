@@ -14,6 +14,24 @@ import (
 
 type ReportID string
 
+type Report struct {
+	ID       ReportID      `json:"report_id"`
+	Alert    Alert         `json:"alert"`
+	Sections []*Section    `json:"sections"`
+	Result   *ReportResult `json:"result"`
+}
+
+type Section struct {
+	Title      string            `json:"title"`
+	Text       []string          `json:"text"`
+	LocalHost  *ReportLocalHost  `json:"localhost"`
+	RemoteHost *ReportRemoteHost `json:"remotehost"`
+}
+
+type ReportResult struct {
+	Severity string `json:"severity"`
+}
+
 type ReportMalware struct {
 	Name string
 }
@@ -40,13 +58,6 @@ type ReportRemoteHost struct {
 	RelatedDomains []string `json:"related_domains"`
 }
 
-type Section struct {
-	Title      string            `json:"title"`
-	Text       []string          `json:"text"`
-	LocalHost  *ReportLocalHost  `json:"localhost"`
-	RemoteHost *ReportRemoteHost `json:"remotehost"`
-}
-
 type ReportData struct {
 	ReportID   ReportID  `dynamo:"report_id"`
 	DataID     string    `dynamo:"data_id"`
@@ -54,6 +65,7 @@ type ReportData struct {
 	TimeToLive time.Time `dynamo:"ttl"`
 }
 
+// NewReportData is a constructor of ReportData
 func NewReportData(reportID ReportID) *ReportData {
 	data := ReportData{
 		ReportID: reportID,
@@ -63,6 +75,7 @@ func NewReportData(reportID ReportID) *ReportData {
 	return &data
 }
 
+// SetSection sets section data with serialization.
 func (x *ReportData) SetSection(section Section) {
 	data, err := json.Marshal(&section)
 	if err != nil {
@@ -72,6 +85,7 @@ func (x *ReportData) SetSection(section Section) {
 	x.Data = data
 }
 
+// Section returns deserialized section structure
 func (x *ReportData) Section() *Section {
 	if len(x.Data) == 0 {
 		return nil
@@ -116,17 +130,6 @@ func FetchReportData(tableName, region string, reportID ReportID) ([]*Section, e
 		sections = append(sections, data.Section())
 	}
 	return sections, nil
-}
-
-type ReportResult struct {
-	Severity string `json:"severity"`
-}
-
-type Report struct {
-	ID       ReportID      `json:"report_id"`
-	Alert    Alert         `json:"alert"`
-	Sections []*Section    `json:"sections"`
-	Result   *ReportResult `json:"result"`
 }
 
 func NewReport(reportID ReportID, alert *Alert) *Report {
