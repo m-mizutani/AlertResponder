@@ -41,13 +41,13 @@ func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) 
 
 	lib.Dump("report", report)
 
-	sections, err := lib.FetchReportData(params.tableName, params.region, report.ID)
+	pages, err := lib.FetchReportPages(params.tableName, params.region, report.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	report.Sections = sections
-	lib.Dump("sections", sections)
+	report.Pages = pages
+	lib.Dump("s", pages)
 
 	return &report, nil
 }

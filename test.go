@@ -21,12 +21,12 @@ import (
 )
 
 type testParams struct {
-	StackName           string `json:"StackName"`
-	Region              string `json:"Region"`
-	ReportResults   string `json:"ReportResultsArn"`
-	TaskStream          string
-	ReportData          string
-	Receptor            string
+	StackName     string `json:"StackName"`
+	Region        string `json:"Region"`
+	ReportResults string `json:"ReportResultsArn"`
+	TaskStream    string
+	ReportData    string
+	Receptor      string
 }
 
 func loadTestConfig(fpath string) testParams {
@@ -232,9 +232,9 @@ func doIntegrationTest(opt *options) {
 
 	pp.Println(task)
 
-	var section lib.Section
-	section.Title = "Test"
-	section.Text = []string{
+	var page lib.ReportPage
+	page.Title = "Test"
+	page.Text = []string{
 		"# Test",
 		"",
 		"This is test message.",
@@ -242,12 +242,12 @@ func doIntegrationTest(opt *options) {
 	remote := lib.ReportRemoteHost{
 		IPAddr: []string{task.Attr.Value},
 	}
-	section.RemoteHost = &remote
+	page.RemoteHost = &remote
 
-	reportData := lib.NewReportData(lib.ReportID(reportID))
-	reportData.SetSection(section)
+	cmpt := lib.NewReportComponent(lib.ReportID(reportID))
+	cmpt.SetPage(page)
 
-	err = reportData.Submit(params.ReportData, params.Region)
+	err = cmpt.Submit(params.ReportData, params.Region)
 	if err != nil {
 		log.Fatal("Fail to submit report data", err)
 	}

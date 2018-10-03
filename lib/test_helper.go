@@ -11,7 +11,7 @@ import (
 
 // Test helper
 
-// Config is for test preference.
+// TestConfig is for test preference.
 type TestConfig struct {
 	GithubEndpoint   string `json:"github_endpoint"`
 	GithubRepository string `json:"github_repo"`
@@ -20,7 +20,7 @@ type TestConfig struct {
 	SecretID         string `json:"secret_id"`
 }
 
-// LoadConfig provides config data from "test.json".
+// LoadTestConfig provides config data from "test.json".
 // The method searches "test.json" toward upper directory
 func LoadTestConfig() TestConfig {
 	cwd := os.Getenv("PWD")

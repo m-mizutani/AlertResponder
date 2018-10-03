@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Inspector func(task Task) (*Section, error)
+type Inspector func(task Task) (*ReportPage, error)
 
 func handleRequest(ctx context.Context, event events.KinesisEvent, f Inspector, tableArn string) (string, error) {
 	// NOTE: I assume that regions of lambda and dynamoDB are same for now
@@ -33,19 +33,19 @@ func handleRequest(ctx context.Context, event events.KinesisEvent, f Inspector, 
 			return "", errors.Wrap(err, "Fail to unmarshal kinesis data")
 		}
 
-		section, err := f(task)
-		Dump("section", section)
+		page, err := f(task)
+		Dump("page", page)
 
 		if err != nil {
 			return "", errors.Wrap(err, "Fail to generate section")
 		}
 		// Skip if no report
-		if section == nil {
+		if page == nil {
 			continue
 		}
 
-		reportData := NewReportData(task.ReportID)
-		reportData.SetSection(*section)
+		reportData := NewReportComponent(task.ReportID)
+		reportData.SetPage(*page)
 
 		if err := reportData.Submit(tableName, tableRegion); err != nil {
 			return "", errors.Wrap(err, "Fail to put report data")

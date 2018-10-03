@@ -15,13 +15,13 @@ import (
 type ReportID string
 
 type Report struct {
-	ID       ReportID      `json:"report_id"`
-	Alert    Alert         `json:"alert"`
-	Sections []*Section    `json:"sections"`
-	Result   *ReportResult `json:"result"`
+	ID     ReportID      `json:"report_id"`
+	Alert  Alert         `json:"alert"`
+	Pages  []*ReportPage `json:"pages"`
+	Result *ReportResult `json:"result"`
 }
 
-type Section struct {
+type ReportPage struct {
 	Title      string            `json:"title"`
 	Text       []string          `json:"text"`
 	LocalHost  *ReportLocalHost  `json:"localhost"`
@@ -58,16 +58,16 @@ type ReportRemoteHost struct {
 	RelatedDomains []string `json:"related_domains"`
 }
 
-type ReportData struct {
+type ReportComponent struct {
 	ReportID   ReportID  `dynamo:"report_id"`
 	DataID     string    `dynamo:"data_id"`
 	Data       []byte    `dynamo:"data"`
 	TimeToLive time.Time `dynamo:"ttl"`
 }
 
-// NewReportData is a constructor of ReportData
-func NewReportData(reportID ReportID) *ReportData {
-	data := ReportData{
+// NewReportComponent is a constructor of ReportComponent
+func NewReportComponent(reportID ReportID) *ReportComponent {
+	data := ReportComponent{
 		ReportID: reportID,
 		DataID:   uuid.NewV4().String(),
 	}
@@ -75,33 +75,33 @@ func NewReportData(reportID ReportID) *ReportData {
 	return &data
 }
 
-// SetSection sets section data with serialization.
-func (x *ReportData) SetSection(section Section) {
-	data, err := json.Marshal(&section)
+// Setpage sets page data with serialization.
+func (x *ReportComponent) SetPage(page ReportPage) {
+	data, err := json.Marshal(&page)
 	if err != nil {
-		log.Println("Fail to marshal report section:", section)
+		log.Println("Fail to marshal report page:", page)
 	}
 
 	x.Data = data
 }
 
-// Section returns deserialized section structure
-func (x *ReportData) Section() *Section {
+// page returns deserialized page structure
+func (x *ReportComponent) Page() *ReportPage {
 	if len(x.Data) == 0 {
 		return nil
 	}
 
-	var section Section
-	err := json.Unmarshal(x.Data, &section)
+	var page ReportPage
+	err := json.Unmarshal(x.Data, &page)
 	if err != nil {
-		log.Println("Invalid report section data foramt", string(x.Data))
+		log.Println("Invalid report page data foramt", string(x.Data))
 		return nil
 	}
 
-	return &section
+	return &page
 }
 
-func (x *ReportData) Submit(tableName, region string) error {
+func (x *ReportComponent) Submit(tableName, region string) error {
 	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(region)})
 	table := db.Table(tableName)
 
@@ -115,27 +115,27 @@ func (x *ReportData) Submit(tableName, region string) error {
 	return nil
 }
 
-func FetchReportData(tableName, region string, reportID ReportID) ([]*Section, error) {
+func FetchReportPages(tableName, region string, reportID ReportID) ([]*ReportPage, error) {
 	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(region)})
 	table := db.Table(tableName)
 
-	dataList := []ReportData{}
+	dataList := []ReportComponent{}
 	err := table.Get("report_id", reportID).All(&dataList)
 	if err != nil {
 		return nil, errors.Wrap(err, "Fail to fetch report data")
 	}
 
-	sections := []*Section{}
+	pages := []*ReportPage{}
 	for _, data := range dataList {
-		sections = append(sections, data.Section())
+		pages = append(pages, data.Page())
 	}
-	return sections, nil
+	return pages, nil
 }
 
 func NewReport(reportID ReportID, alert *Alert) *Report {
 	report := Report{
-		ID:       reportID,
-		Sections: []*Section{},
+		ID:    reportID,
+		Pages: []*ReportPage{},
 	}
 	if alert != nil {
 		report.Alert = *alert
