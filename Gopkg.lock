@@ -15,7 +15,7 @@
   version = "v1.6.0"
 
 [[projects]]
-  digest = "1:a4c995563e73f1e8461affe03bb0e2e99df479d9964d02941d5bce1f4020f1be"
+  digest = "1:f896b62d4e7978775d570cec2d4f5571a642584bf3e728d6fa661cc9494abaca"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -53,6 +53,7 @@
     "service/dynamodb/dynamodbiface",
     "service/kinesis",
     "service/lambda",
+    "service/secretsmanager",
     "service/sfn",
     "service/sns",
     "service/sts",
@@ -160,12 +161,9 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:c40d65817cdd41fac9aa7af8bed56927bb2d6d47e4fea566a74880f5c2b1c41e"
+  digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
   name = "github.com/stretchr/testify"
-  packages = [
-    "assert",
-    "require",
-  ]
+  packages = ["assert"]
   pruneopts = "UT"
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
@@ -198,6 +196,7 @@
     "github.com/aws/aws-sdk-go/service/cloudformation",
     "github.com/aws/aws-sdk-go/service/kinesis",
     "github.com/aws/aws-sdk-go/service/lambda",
+    "github.com/aws/aws-sdk-go/service/secretsmanager",
     "github.com/aws/aws-sdk-go/service/sfn",
     "github.com/aws/aws-sdk-go/service/sns",
     "github.com/guregu/dynamo",
@@ -206,7 +205,6 @@
     "github.com/pkg/errors",
     "github.com/satori/go.uuid",
     "github.com/stretchr/testify/assert",
-    "github.com/stretchr/testify/require",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
