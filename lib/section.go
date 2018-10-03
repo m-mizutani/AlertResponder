@@ -11,8 +11,9 @@ type Section struct {
 }
 
 // NewSection is a constructor of Section
-func NewSection() Section {
+func NewSection(title string) Section {
 	s := Section{
+		Title:      title,
 		paragraphs: []paragraph{},
 	}
 	return s

@@ -9,7 +9,7 @@ import (
 )
 
 func TestListToMarkDown(t *testing.T) {
-	s := lib.NewSection()
+	s := lib.NewSection("")
 	s.Title = "abc"
 
 	l := lib.NewList()
@@ -27,7 +27,7 @@ func TestListToMarkDown(t *testing.T) {
 }
 
 func TestTableToMarkDown(t *testing.T) {
-	s := lib.NewSection()
+	s := lib.NewSection("")
 	s.Title = "abc"
 
 	tbl := lib.NewTable()

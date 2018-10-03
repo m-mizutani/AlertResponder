@@ -26,6 +26,23 @@ type ReportPage struct {
 	Text       []string          `json:"text"`
 	LocalHost  *ReportLocalHost  `json:"localhost"`
 	RemoteHost *ReportRemoteHost `json:"remotehost"`
+	sections   []Section
+}
+
+// NewReportPage is a constructor of ReportPage
+func NewReportPage() ReportPage {
+	page := ReportPage{}
+	return page
+}
+
+// AppendSection adds section to section list of page.
+func (x *ReportPage) AppendSection(section Section) {
+	x.sections = append(x.sections, section)
+}
+
+// AppendSections adds sections to section list of page.
+func (x *ReportPage) AppendSections(sections []Section) {
+	x.sections = append(x.sections, sections...)
 }
 
 type ReportResult struct {
@@ -84,8 +101,14 @@ func NewReportComponent(reportID ReportID) *ReportComponent {
 	return &data
 }
 
-// Setpage sets page data with serialization.
+// SetPage sets page data with serialization.
 func (x *ReportComponent) SetPage(page ReportPage) {
+	text := []string{}
+	for _, section := range page.sections {
+		text = append(text, section.MarkDown()...)
+	}
+	page.Text = text
+
 	data, err := json.Marshal(&page)
 	if err != nil {
 		log.Println("Fail to marshal report page:", page)
@@ -94,7 +117,7 @@ func (x *ReportComponent) SetPage(page ReportPage) {
 	x.Data = data
 }
 
-// page returns deserialized page structure
+// Page returns deserialized page structure
 func (x *ReportComponent) Page() *ReportPage {
 	if len(x.Data) == 0 {
 		return nil
