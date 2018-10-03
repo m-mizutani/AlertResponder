@@ -10,6 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	InspectorTest = false
+)
+
 type Inspector func(task Task) (*ReportPage, error)
 
 func handleRequest(ctx context.Context, event events.KinesisEvent, f Inspector, tableArn string) (string, error) {

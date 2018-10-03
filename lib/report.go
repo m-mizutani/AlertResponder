@@ -33,7 +33,16 @@ type ReportResult struct {
 }
 
 type ReportMalware struct {
-	Name string
+	SHA256    string              `json:"sha256"`
+	Timestamp time.Time           `json:"timestamp"`
+	Scans     []ReportMalwareScan `json:"scans"`
+	Relation  string              `json:"relation"`
+}
+
+type ReportMalwareScan struct {
+	Vendor   string `json:"vendor"`
+	Name     string `json:"name"`
+	Positive bool   `json:"positive"`
 }
 
 type ReportServiceUsage struct {
@@ -51,11 +60,11 @@ type ReportLocalHost struct {
 }
 
 type ReportRemoteHost struct {
-	IPAddr         []string `json:"ipaddr"`
-	Domain         []string `json:"domain"`
-	Country        []string `json:"country"`
-	RelatedMalware []string `json:"related_malware"`
-	RelatedDomains []string `json:"related_domains"`
+	IPAddr         []string        `json:"ipaddr"`
+	Domain         []string        `json:"domain"`
+	Country        []string        `json:"country"`
+	RelatedMalware []ReportMalware `json:"related_malware"`
+	RelatedDomains []string        `json:"related_domains"`
 }
 
 type ReportComponent struct {
