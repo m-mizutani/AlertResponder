@@ -22,27 +22,17 @@ type Report struct {
 }
 
 type ReportPage struct {
-	Title      string            `json:"title"`
-	Text       []string          `json:"text"`
-	LocalHost  *ReportLocalHost  `json:"localhost"`
-	RemoteHost *ReportRemoteHost `json:"remotehost"`
-	sections   []Section
+	Title      string             `json:"title"`
+	Text       []string           `json:"text"`
+	LocalHost  []ReportLocalHost  `json:"localhost"`
+	RemoteHost []ReportRemoteHost `json:"remotehost"`
+	Author     string             `json:"author"`
 }
 
 // NewReportPage is a constructor of ReportPage
 func NewReportPage() ReportPage {
 	page := ReportPage{}
 	return page
-}
-
-// AppendSection adds section to section list of page.
-func (x *ReportPage) AppendSection(section Section) {
-	x.sections = append(x.sections, section)
-}
-
-// AppendSections adds sections to section list of page.
-func (x *ReportPage) AppendSections(sections []Section) {
-	x.sections = append(x.sections, sections...)
 }
 
 type ReportResult struct {
@@ -60,6 +50,19 @@ type ReportMalwareScan struct {
 	Vendor   string `json:"vendor"`
 	Name     string `json:"name"`
 	Positive bool   `json:"positive"`
+	Source   string `json:"source"`
+}
+
+type ReportDomain struct {
+	Name      string    `json:"name"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
+}
+
+type ReportURL struct {
+	URL       string    `json:"url"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
 }
 
 type ReportServiceUsage struct {
@@ -78,10 +81,10 @@ type ReportLocalHost struct {
 
 type ReportRemoteHost struct {
 	IPAddr         []string        `json:"ipaddr"`
-	Domain         []string        `json:"domain"`
 	Country        []string        `json:"country"`
 	RelatedMalware []ReportMalware `json:"related_malware"`
-	RelatedDomains []string        `json:"related_domains"`
+	RelatedDomains []ReportDomain  `json:"related_domains"`
+	RelatedURLs    []ReportURL     `json:"related_urls"`
 }
 
 type ReportComponent struct {
@@ -103,12 +106,6 @@ func NewReportComponent(reportID ReportID) *ReportComponent {
 
 // SetPage sets page data with serialization.
 func (x *ReportComponent) SetPage(page ReportPage) {
-	text := []string{}
-	for _, section := range page.sections {
-		text = append(text, section.MarkDown()...)
-	}
-	page.Text = text
-
 	data, err := json.Marshal(&page)
 	if err != nil {
 		log.Println("Fail to marshal report page:", page)
