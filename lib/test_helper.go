@@ -11,18 +11,9 @@ import (
 
 // Test helper
 
-// TestConfig is for test preference.
-type TestConfig struct {
-	GithubEndpoint   string `json:"github_endpoint"`
-	GithubRepository string `json:"github_repo"`
-	GithubToken      string `json:"github_token"`
-	AwsRegion        string `json:"aws_region"`
-	SecretID         string `json:"secret_id"`
-}
-
 // LoadTestConfig provides config data from "test.json".
 // The method searches "test.json" toward upper directory
-func LoadTestConfig() TestConfig {
+func LoadTestConfig(cfg interface{}) {
 	cwd := os.Getenv("PWD")
 	var fp *os.File
 	var err error
@@ -47,7 +38,10 @@ func LoadTestConfig() TestConfig {
 		panic(err)
 	}
 
-	cfg := TestConfig{}
-	err = json.Unmarshal(rawData, &cfg)
-	return cfg
+	err = json.Unmarshal(rawData, cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	return
 }

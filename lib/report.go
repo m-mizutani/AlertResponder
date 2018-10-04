@@ -19,6 +19,14 @@ type Report struct {
 	Alert  Alert         `json:"alert"`
 	Pages  []*ReportPage `json:"pages"`
 	Result *ReportResult `json:"result"`
+	Status string        `json:"status"`
+	// Status must be "Received" or "Published".
+	//
+	// Received: This status means that the report is issued by Receptor.
+	//           No inspect information
+	// Published: When publisher receives report with result, report status
+	//            is "published".
+	//
 }
 
 type ReportPage struct {
@@ -134,7 +142,7 @@ func (x *ReportComponent) Submit(tableName, region string) error {
 	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(region)})
 	table := db.Table(tableName)
 
-	x.TimeToLive = time.Now().Add(time.Second * 864000)
+	x.TimeToLive = time.Now().UTC().Add(time.Second * 864000)
 
 	err := table.Put(x).Run()
 	if err != nil {

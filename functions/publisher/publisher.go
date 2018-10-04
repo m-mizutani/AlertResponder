@@ -36,6 +36,7 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 		return "", err
 	}
 
+	report.Status = "published"
 	err = lib.PublishSnsMessage(params.reportLine, params.region, &report)
 	if err != nil {
 		return "Error", err

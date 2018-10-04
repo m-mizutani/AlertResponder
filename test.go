@@ -242,7 +242,7 @@ func doIntegrationTest(opt *options) {
 	remote := lib.ReportRemoteHost{
 		IPAddr: []string{task.Attr.Value},
 	}
-	page.RemoteHost = &remote
+	page.RemoteHost = append(page.RemoteHost, remote)
 
 	cmpt := lib.NewReportComponent(lib.ReportID(reportID))
 	cmpt.SetPage(page)
