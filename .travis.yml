@@ -13,7 +13,7 @@ script:
 - touch param.cfg
 - pip install --user awscli
 - make functions
-# - "./scripts/package-to-all-region.sh"
+- ./scripts/package-to-all-region.sh
 env:
   global:
   - secure: NROfLwMTq5qn47rkWS3osprPH0F83bIwCJ5hS5NqFIWRzLPYLKMLYpNVNG1c0j58n1oaViIK7B2rrecU33XZv7rmn4zbhGvE4kLYUm4BNnYPBiy2XYDmxUIE52E7gDnTOLWgFT3KbUhVu+/cyg/W7zPJn3h90kZwVIYJfDDlCpFlcsSTQnoKCr4nCgwvWX9yUgF+DmPXLbktmj0GOq0akE7Ep1zcCQ+CxZqs9rnQ7VTUrv715Xm1ryupZzqGrsKakpH4cQJX96b7W1VIacow3PTBABHtantyS+XfG/55TRG5eHl3fctn99+VbiAFD22MybJGYVxwcRczvkPSlhxPOCyrUdYnv8XX/xziEqP32YBYg43oV4RztizGRtIaE9aZDPYmhZZBCXDl59S8ATyQf9NZ0Aku+xPfMQQMVGTAQx6+XkIpQ8YgW/F2NacJF0Ohf6BNEuNipARxsQeiPLBvYi6DjAF3TpCWduOh0DHcBQRzaNIMU9EWb4S/Wuk3CQE9dIsyiUFLysLAz0rC08E+9T8JdWfkY3CdtfipeKr4AFJgHUkZrEu2dCyQlFe3oFiUc+KJtIsZCrzvpHJr2B06Pn2J74YtKl/18Qs/nx91MWXQIlwW3Cb0TPw6n1JVi8eyTs8w8jljKBthedD2tY+N84Leg6x2YPHDhlAd4RD63jE=
