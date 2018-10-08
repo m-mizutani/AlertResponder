@@ -38,9 +38,13 @@ Resources:
       AttributeDefinitions:
       - AttributeName: alert_id
         AttributeType: S
+      - AttributeName: timestamp
+        AttributeType: N
       KeySchema:
       - AttributeName: alert_id
         KeyType: HASH
+      - AttributeName: timestamp
+        KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1

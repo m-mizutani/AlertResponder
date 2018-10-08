@@ -32,6 +32,7 @@ type AlertRecord struct {
 	ReportID  lib.ReportID `dynamo:"report_id"`
 	AlertData []byte       `dynamo:"alert_data"`
 	Timestamp time.Time    `dynamo:"timestamp"`
+	TTL       time.Time    `dynamo:"ttl"`
 }
 
 func GenAlertKey(alertID, rule string) string {
@@ -64,6 +65,7 @@ func (x *AlertMap) Create(alertKey, rule string, alertData []byte) (*lib.ReportI
 		ReportID:  lib.NewReportID(),
 		AlertData: alertData,
 		Timestamp: time.Now().UTC(),
+		TTL:       time.Now().UTC().Add(time.Second * 86400),
 	}
 
 	err := x.table.Put(&record).Run()
