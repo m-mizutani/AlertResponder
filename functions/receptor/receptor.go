@@ -105,7 +105,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 			return resp, errors.Wrap(err, "Fail to start ReviewMachine")
 		}
 
-		report.Staus = "received"
+		report.Status = "received"
 		err = lib.PublishSnsMessage(os.Getenv("REPORT_LINE"), cfg.Region, report)
 		if err != nil {
 			return resp, err

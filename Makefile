@@ -6,6 +6,7 @@ STACK_NAME := $(shell cat $(AR_CONFIG) | grep StackName | cut -d = -f 2)
 PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e NotifyStreamArn -e PolicyLambdaArn -e InspectionDelay -e ReviewDelay | tr '\n' ' ')
 TEMPLATE_FILE=template.yml
 LIBS=lib/*.go
+FUNCTIONS=build/receptor build/dispatcher build/compiler build/publisher build/error-handler
 
 all: cli
 
@@ -23,12 +24,15 @@ build/publisher: ./functions/publisher/*.go $(LIBS)
 build/error-handler: ./functions/compiler/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/error-handler ./functions/error-handler/
 
-functions: build/receptor build/dispatcher build/compiler build/publisher build/error-handler
+functions: $(FUNCTIONS)
+
+clean:
+	rm $(FUNCTIONS)
 
 test:
 	go test -v ./lib/
 
-sam.yml: $(TEMPLATE_FILE) build/receptor build/dispatcher build/compiler build/publisher build/error-handler 
+sam.yml: $(TEMPLATE_FILE) $(FUNCTIONS)
 	aws cloudformation package \
 		--template-file $(TEMPLATE_FILE) \
 		--s3-bucket $(CODE_S3_BUCKET) \
