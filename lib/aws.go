@@ -57,7 +57,7 @@ func NewArn(arn string) Arn {
 	return obj
 }
 
-func ExecDelayMachine(stateMachineARN string, region string, report *Report) error {
+func ExecDelayMachine(stateMachineARN string, region string, report Report) error {
 	data, err := json.Marshal(report)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal report data")
@@ -82,7 +82,7 @@ func ExecDelayMachine(stateMachineARN string, region string, report *Report) err
 	return nil
 }
 
-func PublishSnsMessage(topicArn, region string, report *Report) error {
+func PublishSnsMessage(topicArn, region string, report Report) error {
 	data, err := json.Marshal(report)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal report data")

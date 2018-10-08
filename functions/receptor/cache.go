@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -40,38 +41,41 @@ func GenAlertKey(alertID, rule string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
 
-func (x *AlertMap) Lookup(alertKey, rule string) (*lib.ReportID, error) {
-	alertID := GenAlertKey(alertKey, rule)
-
-	record := AlertRecord{}
-	err := x.table.Get("alert_id", alertID).One(&record)
-	if err == dynamo.ErrNotFound {
-		return nil, nil
-	}
+func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
+	var reportID lib.ReportID
+	alertID := GenAlertKey(alert.Key, alert.Rule)
+	alertData, err := json.Marshal(alert)
 	if err != nil {
-		return nil, errors.Wrap(err, "Fail to get alert")
+		return reportID, errors.Wrap(err, "Fail to unmarshal alert")
 	}
 
-	return &record.ReportID, nil
-}
-
-func (x *AlertMap) Create(alertKey, rule string, alertData []byte) (*lib.ReportID, error) {
-	alertID := GenAlertKey(alertKey, rule)
-
-	record := AlertRecord{
-		AlertKey:  alertKey,
-		AlertID:   alertID,
-		Rule:      rule,
-		ReportID:  lib.NewReportID(),
-		AlertData: alertData,
-		Timestamp: time.Now().UTC(),
-		TTL:       time.Now().UTC().Add(time.Second * 86400),
-	}
-
-	err := x.table.Put(&record).Run()
+	var records []AlertRecord
+	err = x.table.Get("alert_id", alertID).All(records)
 	if err != nil {
-		return nil, errors.Wrap(err, "Fail to put alert map")
+		return reportID, errors.Wrap(err, "Fail to get cache")
 	}
 
-	return &record.ReportID, nil
+	var record AlertRecord
+	if len(records) == 0 {
+		record = AlertRecord{
+			AlertKey: alert.Key,
+			AlertID:  alertID,
+			Rule:     alert.Rule,
+			ReportID: lib.NewReportID(),
+		}
+	} else {
+		record = records[0]
+	}
+
+	record.AlertData = alertData
+	record.Timestamp = time.Now().UTC()
+	record.TTL = time.Now().UTC().Add(time.Second * 86400)
+
+	lib.Dump("AlertRecord", record)
+	err = x.table.Put(&record).Run()
+	if err != nil {
+		return reportID, errors.Wrap(err, "Fail to put alert map")
+	}
+
+	return record.ReportID, nil
 }

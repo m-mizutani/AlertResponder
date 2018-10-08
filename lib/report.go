@@ -169,16 +169,14 @@ func FetchReportPages(tableName, region string, reportID ReportID) ([]*ReportPag
 	return pages, nil
 }
 
-func NewReport(reportID ReportID, alert *Alert) *Report {
+func NewReport(reportID ReportID, alert Alert) Report {
 	report := Report{
 		ID:    reportID,
 		Pages: []*ReportPage{},
-	}
-	if alert != nil {
-		report.Alert = *alert
+		Alert: alert,
 	}
 
-	return &report
+	return report
 }
 
 func NewReportID() ReportID {

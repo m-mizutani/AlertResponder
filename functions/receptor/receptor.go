@@ -80,30 +80,36 @@ func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 	return alerts, nil
 }
 
-func alertToReport(cfg *Config, alert *lib.Alert) (*lib.Report, error) {
+func alertToReport(cfg Config, alert lib.Alert) (lib.Report, error) {
 	lib.Dump("alert", alert)
 	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
 
-	reportID, err := alertMap.Lookup(alert.Key, alert.Rule)
+	/*
+		reportID, err := alertMap.Lookup(alert.Key, alert.Rule)
+		if err != nil {
+			return nil, err
+		}
+
+		if reportID == nil {
+			// Existing alert issue is not found
+			alertData, err := json.Marshal(alert)
+			if err != nil {
+				return nil, errors.Wrap(err, "Fail to marshal alert data")
+			}
+			reportID, err = alertMap.Create(alert.Key, alert.Rule, alertData)
+
+			if err != nil {
+				return nil, errors.Wrap(err, "Failt to create a new alert map")
+			}
+			log.Printf("Created a new reportDI: %s", *reportID)
+		}
+	*/
+
+	reportID, err := alertMap.Sync(alert)
 	if err != nil {
-		return nil, err
+		return lib.Report{}, err
 	}
-
-	if reportID == nil {
-		// Existing alert issue is not found
-		alertData, err := json.Marshal(alert)
-		if err != nil {
-			return nil, errors.Wrap(err, "Fail to marshal alert data")
-		}
-		reportID, err = alertMap.Create(alert.Key, alert.Rule, alertData)
-
-		if err != nil {
-			return nil, errors.Wrap(err, "Failt to create a new alert map")
-		}
-		log.Printf("Created a new reportDI: %s", *reportID)
-	}
-
-	report := lib.NewReport(*reportID, alert)
+	report := lib.NewReport(reportID, alert)
 
 	return report, nil
 }
@@ -114,7 +120,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 	resp := []string{}
 
 	for _, alert := range alerts {
-		report, err := alertToReport(&cfg, &alert)
+		report, err := alertToReport(cfg, alert)
 		if err != nil {
 			return resp, err
 		}

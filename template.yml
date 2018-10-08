@@ -39,7 +39,7 @@ Resources:
       - AttributeName: alert_id
         AttributeType: S
       - AttributeName: timestamp
-        AttributeType: N
+        AttributeType: S
       KeySchema:
       - AttributeName: alert_id
         KeyType: HASH
