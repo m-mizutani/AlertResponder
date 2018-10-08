@@ -101,12 +101,12 @@ Resources:
       DefinitionString:
         !Sub
           - |-
-            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
+            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
           - policyLambdaArn:
               Ref: PolicyLambdaArn
             compilerArn:
               Fn::GetAtt: Compiler.Arn
-            publisherArn: 
+            publisherArn:
               Fn::GetAtt: Publisher.Arn
             errorHandlerArn:
               Fn::GetAtt: ErrorHandler.Arn
@@ -187,6 +187,9 @@ Resources:
   # --------------------------------------------------------
   # SNS topics
   AlertNotification:
+    Type: AWS::SNS::Topic
+
+  TaskNotification:
     Type: AWS::SNS::Topic
 
   ReportLine:
