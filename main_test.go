@@ -296,7 +296,7 @@ func genAlert() lib.Alert {
 				Type:    "ipaddr",
 				Value:   "10.0.0.1",
 				Key:     "source address",
-				Context: "remote",
+				Context: []string{"remote"},
 			},
 		},
 	}
@@ -370,7 +370,7 @@ func TestNormal(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check eventual result(s)
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 15)
 
 	db := dynamo.New(session.New(), &aws.Config{Region: aws.String(params.Region)})
 	table := db.Table(params.ReportResults)

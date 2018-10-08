@@ -7,10 +7,10 @@ import (
 
 // Attribute is element of alert
 type Attribute struct {
-	Type    string `json:"type"`
-	Value   string `json:"value"`
-	Key     string `json:"key"`
-	Context string `json:"context"`
+	Type    string   `json:"type"`
+	Value   string   `json:"value"`
+	Key     string   `json:"key"`
+	Context []string `json:"context"`
 }
 
 // TimeRange has timestamps of alert begin and end
