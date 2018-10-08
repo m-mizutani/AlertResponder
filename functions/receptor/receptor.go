@@ -40,6 +40,26 @@ func buildConfig(ctx context.Context) (*Config, error) {
 	return &cfg, nil
 }
 
+func ParseSnsEvent(event events.SNSEvent) ([]lib.Alert, error) {
+	alerts := []lib.Alert{}
+
+	for _, record := range event.Records {
+		src := record.SNS.Message
+		log.Println("data = ", src)
+
+		alert := lib.Alert{}
+		err := json.Unmarshal([]byte(src), &alert)
+		if err != nil {
+			log.Println("Invalid alert data: ", string(src))
+			return alerts, errors.Wrap(err, "Invalid json format in SNS message")
+		}
+
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
 func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 	alerts := []lib.Alert{}
 
@@ -123,7 +143,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 }
 
 // HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, event events.KinesisEvent) (ReceptorResponse, error) {
+func HandleRequest(ctx context.Context, event events.SNSEvent) (ReceptorResponse, error) {
 	lib.Dump("Event", event)
 
 	var resp ReceptorResponse
@@ -133,7 +153,7 @@ func HandleRequest(ctx context.Context, event events.KinesisEvent) (ReceptorResp
 		return resp, err
 	}
 
-	events, err := ParseEvent(event)
+	events, err := ParseSnsEvent(event)
 	if err != nil {
 		return resp, err
 	}

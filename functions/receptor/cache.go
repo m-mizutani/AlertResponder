@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -29,7 +30,8 @@ type AlertRecord struct {
 	AlertKey  string       `dynamo:"alert_key"`
 	Rule      string       `dynamo:"rule"`
 	ReportID  lib.ReportID `dynamo:"report_id"`
-	AlertData []byte       `dynamo:alert_data`
+	AlertData []byte       `dynamo:"alert_data"`
+	Timestamp time.Time    `dynamo:"timestamp"`
 }
 
 func GenAlertKey(alertID, rule string) string {
@@ -61,6 +63,7 @@ func (x *AlertMap) Create(alertKey, rule string, alertData []byte) (*lib.ReportI
 		Rule:      rule,
 		ReportID:  lib.NewReportID(),
 		AlertData: alertData,
+		Timestamp: time.Now().UTC(),
 	}
 
 	err := x.table.Put(&record).Run()
