@@ -71,7 +71,11 @@ func alertToReport(cfg *Config, alert *lib.Alert) (*lib.Report, error) {
 
 	if reportID == nil {
 		// Existing alert issue is not found
-		reportID, err = alertMap.Create(alert.Key, alert.Rule)
+		alertData, err := json.Marshal(alert)
+		if err != nil {
+			return nil, errors.Wrap(err, "Fail to marshal alert data")
+		}
+		reportID, err = alertMap.Create(alert.Key, alert.Rule, alertData)
 
 		if err != nil {
 			return nil, errors.Wrap(err, "Failt to create a new alert map")

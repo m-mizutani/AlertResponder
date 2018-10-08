@@ -25,10 +25,11 @@ func NewAlertMap(tableName, region string) *AlertMap {
 }
 
 type AlertRecord struct {
-	AlertID  string       `dynamo:"alert_id"`
-	AlertKey string       `dynamo:"alert_key"`
-	Rule     string       `dynamo:"rule"`
-	ReportID lib.ReportID `dynamo:"report_id"`
+	AlertID   string       `dynamo:"alert_id"`
+	AlertKey  string       `dynamo:"alert_key"`
+	Rule      string       `dynamo:"rule"`
+	ReportID  lib.ReportID `dynamo:"report_id"`
+	AlertData []byte       `dynamo:alert_data`
 }
 
 func GenAlertKey(alertID, rule string) string {
@@ -51,14 +52,15 @@ func (x *AlertMap) Lookup(alertKey, rule string) (*lib.ReportID, error) {
 	return &record.ReportID, nil
 }
 
-func (x *AlertMap) Create(alertKey, rule string) (*lib.ReportID, error) {
+func (x *AlertMap) Create(alertKey, rule string, alertData []byte) (*lib.ReportID, error) {
 	alertID := GenAlertKey(alertKey, rule)
 
 	record := AlertRecord{
-		AlertKey: alertKey,
-		AlertID:  alertID,
-		Rule:     rule,
-		ReportID: lib.NewReportID(),
+		AlertKey:  alertKey,
+		AlertID:   alertID,
+		Rule:      rule,
+		ReportID:  lib.NewReportID(),
+		AlertData: alertData,
 	}
 
 	err := x.table.Put(&record).Run()

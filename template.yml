@@ -7,12 +7,6 @@ Parameters:
   StepFunctionRoleArn:
     Type: String
     Default: ""
-  NotifyStreamArn:
-    Type: String
-    Default: ""
-  NotifyQueueArn:
-    Type: String
-    Default: ""
   PolicyLambdaArn:
     Type: String
   InspectionDelay:
@@ -27,10 +21,6 @@ Conditions:
     Fn::Equals: [ { Ref: LambdaRoleArn }, "" ]
   StepFunctionRoleRequired:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
-  NotifyStreamAvailable:
-    Fn::Not: [!Equals [!Ref NotifyStreamArn, ""]]
-  NotifyQueueAvailable:
-    Fn::Not: [!Equals [!Ref NotifyQueueArn, ""]]
 
 Globals:
   Function:
@@ -77,7 +67,7 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
-    
+
   # --------------------------------------------------------
   # Kinesis Stream
   TaskStream:
@@ -142,6 +132,13 @@ Resources:
             Ref: PolicyInvoker
           REPORT_LINE:
             Ref: ReportLine
+      Events:
+        NotifyTopic:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: AlertNotification
+
 
   Dispatcher:
     Type: AWS::Serverless::Function
@@ -154,7 +151,7 @@ Resources:
             Fn::Sub: ${TaskStream}
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
-        
+
   Compiler:
     Type: AWS::Serverless::Function
     Properties:
@@ -189,6 +186,9 @@ Resources:
 
   # --------------------------------------------------------
   # SNS topics
+  AlertNotification:
+    Type: AWS::SNS::Topic
+
   ReportLine:
     Type: AWS::SNS::Topic
 
