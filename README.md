@@ -23,3 +23,10 @@ Please replace follwoing variables according to your environment:
 $ curl -O https://s3-$REGION.amazonaws.com/cfn-assets.$REGION/AlertResponder/templates/latest.yml
 $ aws cloudformation deploy --template-file latest.yml --stack-name $STACK_NAME --capabilities CAPABILITY_IAM
 ```
+
+Development
+------------------
+
+### Architecture Overview
+
+![architecture](https://user-images.githubusercontent.com/605953/46709133-4b3bf900-cc7d-11e8-8927-b8f068072f58.png)

@@ -24,7 +24,7 @@ Conditions:
   StepFunctionRoleRequired:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
   NoReviewer:
-    Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
+    Fn::Equals: [ { Ref: ReviewerLambdaArn }, "" ]
 
 Globals:
   Function:
