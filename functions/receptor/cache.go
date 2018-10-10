@@ -50,7 +50,7 @@ func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
 	}
 
 	var records []AlertRecord
-	err = x.table.Get("alert_id", alertID).All(records)
+	err = x.table.Get("alert_id", alertID).All(&records)
 	if err != nil {
 		return reportID, errors.Wrap(err, "Fail to get cache")
 	}
