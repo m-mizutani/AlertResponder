@@ -10,6 +10,7 @@ Parameters:
     Default: ""
   ReviewerLambdaArn:
     Type: String
+    Default: ""
   InspectionDelay:
     Type: Number
     Default: 300
@@ -21,6 +22,8 @@ Conditions:
   LambdaRoleRequired:
     Fn::Equals: [ { Ref: LambdaRoleArn }, "" ]
   StepFunctionRoleRequired:
+    Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
+  NoReviewer:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
 
 Globals:
@@ -108,7 +111,7 @@ Resources:
           - |-
             {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
           - policyLambdaArn:
-              Ref: ReviewerLambdaArn
+              Fn::If: [ NoReviewer, {"Fn::GetAtt": NoviceReviewer.Arn}, {Ref: ReviewerLambdaArn} ]
             compilerArn:
               Fn::GetAtt: Compiler.Arn
             publisherArn:
@@ -186,6 +189,14 @@ Resources:
     Properties:
       CodeUri: build
       Handler: compiler
+      Role:
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+
+  NoviceReviewer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build
+      Handler: novice-reviewer
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
@@ -281,9 +292,8 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource:
-                  - Ref: ReviewerLambdaArn
+                  - Fn::If: [ NoReviewer, {"Fn::GetAtt": NoviceReviewer.Arn}, {Ref: ReviewerLambdaArn} ]
                   - Fn::GetAtt: Dispatcher.Arn
                   - Fn::GetAtt: ErrorHandler.Arn
                   - Fn::GetAtt: Compiler.Arn
                   - Fn::GetAtt: Publisher.Arn
-
