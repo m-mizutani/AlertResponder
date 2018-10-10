@@ -80,16 +80,19 @@ type ReportServiceUsage struct {
 }
 
 type ReportLocalHost struct {
-	UserName     []string              `json:"username"`
-	OS           []string              `json:"os"`
-	IPAddr       []string              `json:"ipaddr"`
-	Country      []string              `json:"country"`
-	ServiceUsage []*ReportServiceUsage `json:"service_usage"`
+	ID           string               `json:"id"`
+	UserName     []string             `json:"username"`
+	OS           []string             `json:"os"`
+	IPAddr       []string             `json:"ipaddr"`
+	Country      []string             `json:"country"`
+	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
 type ReportRemoteHost struct {
+	ID             string          `json:"id"`
 	IPAddr         []string        `json:"ipaddr"`
 	Country        []string        `json:"country"`
+	ASOwner        []string        `json:"as_owner"`
 	RelatedMalware []ReportMalware `json:"related_malware"`
 	RelatedDomains []ReportDomain  `json:"related_domains"`
 	RelatedURLs    []ReportURL     `json:"related_urls"`
