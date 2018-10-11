@@ -353,11 +353,6 @@ func TestNormal(t *testing.T) {
 
 	var page lib.ReportPage
 	page.Title = "Test"
-	page.Text = []string{
-		"# Test",
-		"",
-		"This is test message.",
-	}
 	remote := lib.ReportRemoteHost{
 		IPAddr: []string{task.Attr.Value},
 	}
@@ -392,8 +387,10 @@ func TestNormal(t *testing.T) {
 		reports = append(reports, report)
 	}
 
-	assert.Equal(t, 0, len(reports[0].Pages))
-	assert.NotEqual(t, 0, len(reports[1].Pages))
+	assert.Equal(t, 0, len(reports[0].Content.RemoteHosts))
+	assert.Equal(t, 0, len(reports[0].Content.LocalHosts))
+	assert.NotEqual(t, 0, len(reports[1].Content.RemoteHosts))
+	assert.Equal(t, 0, len(reports[1].Content.LocalHosts))
 
 	return
 }

@@ -15,11 +15,11 @@ import (
 type ReportID string
 
 type Report struct {
-	ID     ReportID      `json:"report_id"`
-	Alert  Alert         `json:"alert"`
-	Pages  []*ReportPage `json:"pages"`
-	Result *ReportResult `json:"result"`
-	Status string        `json:"status"`
+	ID      ReportID      `json:"report_id"`
+	Alert   Alert         `json:"alert"`
+	Content ReportContent `json:"content"`
+	Result  *ReportResult `json:"result"`
+	Status  string        `json:"status"`
 	// Status must be "Received" or "Published".
 	//
 	// Received: This status means that the report is issued by Receptor.
@@ -29,12 +29,19 @@ type Report struct {
 	//
 }
 
+type ReportContent struct {
+	RemoteHosts  map[string]ReportRemoteHost `json:"remote_hosts"`
+	LocalHosts   map[string]ReportLocalHost  `json:"local_hosts"`
+	SubjectUsers map[string]ReportURL        `json:"subject_users"`
+}
+
 type ReportPage struct {
-	Title      string             `json:"title"`
-	Text       []string           `json:"text"`
-	LocalHost  []ReportLocalHost  `json:"localhost"`
-	RemoteHost []ReportRemoteHost `json:"remotehost"`
-	Author     string             `json:"author"`
+	Title       string             `json:"title"`
+	Text        []string           `json:"text"`
+	LocalHost   []ReportLocalHost  `json:"local_hosts"`
+	RemoteHost  []ReportRemoteHost `json:"remote_hosts"`
+	SubjectUser []ReportUser       `json:"subject_users"`
+	Author      string             `json:"author"`
 }
 
 // NewReportPage is a constructor of ReportPage
@@ -45,6 +52,11 @@ func NewReportPage() ReportPage {
 
 type ReportResult struct {
 	Severity string `json:"severity"`
+}
+
+type ReportUser struct {
+	UserName     string               `json:"username"` // Identity
+	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
 type ReportMalware struct {
@@ -76,6 +88,7 @@ type ReportURL struct {
 type ReportServiceUsage struct {
 	ServiceName string    `json:"service_name"`
 	Principal   string    `json:"principal"`
+	Action      string    `json:"action"`
 	LastSeen    time.Time `json:"last_seen"`
 }
 
@@ -88,6 +101,15 @@ type ReportLocalHost struct {
 	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
+func (x *ReportLocalHost) Merge(s ReportLocalHost) {
+	x.ID = s.ID
+	x.UserName = append(x.UserName, s.Country...)
+	x.OS = append(x.OS, s.OS...)
+	x.IPAddr = append(x.IPAddr, s.IPAddr...)
+	x.Country = append(x.Country, s.Country...)
+	x.ServiceUsage = append(x.ServiceUsage, s.ServiceUsage...)
+}
+
 type ReportRemoteHost struct {
 	ID             string          `json:"id"`
 	IPAddr         []string        `json:"ipaddr"`
@@ -96,6 +118,16 @@ type ReportRemoteHost struct {
 	RelatedMalware []ReportMalware `json:"related_malware"`
 	RelatedDomains []ReportDomain  `json:"related_domains"`
 	RelatedURLs    []ReportURL     `json:"related_urls"`
+}
+
+func (x *ReportRemoteHost) Merge(s ReportRemoteHost) {
+	x.ID = s.ID
+	x.IPAddr = append(x.IPAddr, s.IPAddr...)
+	x.Country = append(x.Country, s.Country...)
+	x.ASOwner = append(x.ASOwner, s.ASOwner...)
+	x.RelatedMalware = append(x.RelatedMalware, s.RelatedMalware...)
+	x.RelatedDomains = append(x.RelatedDomains, s.RelatedDomains...)
+	x.RelatedURLs = append(x.RelatedURLs, s.RelatedURLs...)
 }
 
 type ReportComponent struct {
@@ -175,7 +207,6 @@ func FetchReportPages(tableName, region string, reportID ReportID) ([]*ReportPag
 func NewReport(reportID ReportID, alert Alert) Report {
 	report := Report{
 		ID:    reportID,
-		Pages: []*ReportPage{},
 		Alert: alert,
 	}
 

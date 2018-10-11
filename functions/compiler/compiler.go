@@ -46,8 +46,23 @@ func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) 
 		return nil, err
 	}
 
-	report.Pages = pages
-	lib.Dump("s", pages)
+	c := &report.Content
+	c.RemoteHosts = map[string]lib.ReportRemoteHost{}
+	c.LocalHosts = map[string]lib.ReportLocalHost{}
+
+	for _, page := range pages {
+		for _, r := range page.RemoteHost {
+			h, _ := c.RemoteHosts[r.ID]
+			h.Merge(r)
+			c.RemoteHosts[r.ID] = h
+		}
+
+		for _, r := range page.LocalHost {
+			h, _ := c.LocalHosts[r.ID]
+			h.Merge(r)
+			c.LocalHosts[r.ID] = h
+		}
+	}
 
 	return &report, nil
 }
