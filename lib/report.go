@@ -35,9 +35,16 @@ type ReportContent struct {
 	SubjectUsers map[string]ReportURL        `json:"subject_users"`
 }
 
+func newReportContent() ReportContent {
+	return ReportContent{
+		RemoteHosts:  map[string]ReportRemoteHost{},
+		LocalHosts:   map[string]ReportLocalHost{},
+		SubjectUsers: map[string]ReportURL{},
+	}
+}
+
 type ReportPage struct {
 	Title       string             `json:"title"`
-	Text        []string           `json:"text"`
 	LocalHost   []ReportLocalHost  `json:"local_hosts"`
 	RemoteHost  []ReportRemoteHost `json:"remote_hosts"`
 	SubjectUser []ReportUser       `json:"subject_users"`
@@ -206,8 +213,9 @@ func FetchReportPages(tableName, region string, reportID ReportID) ([]*ReportPag
 
 func NewReport(reportID ReportID, alert Alert) Report {
 	report := Report{
-		ID:    reportID,
-		Alert: alert,
+		ID:      reportID,
+		Alert:   alert,
+		Content: newReportContent(),
 	}
 
 	return report
