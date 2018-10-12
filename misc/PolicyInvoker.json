@@ -1,0 +1,49 @@
+{
+  "StartAt": "Wating",
+  "States": {
+    "Wating": {
+      "Type": "Wait",
+      "Next": "Compiler",
+      "Seconds": "__VAR__"
+    },
+    "Compiler": {
+      "Type": "Task",
+      "Resource": "${compilerArn}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "ErrorHandler"
+        }
+      ],
+      "Next": "CheckPolicy"
+    },
+    "CheckPolicy": {
+      "Type": "Task",
+      "Resource": "${policyLambdaArn}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "ErrorHandler"
+        }
+      ],
+      "ResultPath": "$.result",
+      "Next": "Publish"
+    },
+    "ErrorHandler": {
+      "Type": "Task",
+      "Resource": "${errorHandlerArn}",
+      "End": true
+    },
+    "Publish": {
+      "Type": "Task",
+      "Resource": "${publisherArn}",
+      "End": true
+    }
+  }
+}

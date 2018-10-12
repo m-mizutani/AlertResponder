@@ -40,6 +40,26 @@ func buildConfig(ctx context.Context) (*Config, error) {
 	return &cfg, nil
 }
 
+func ParseSnsEvent(event events.SNSEvent) ([]lib.Alert, error) {
+	alerts := []lib.Alert{}
+
+	for _, record := range event.Records {
+		src := record.SNS.Message
+		log.Println("data = ", src)
+
+		alert := lib.Alert{}
+		err := json.Unmarshal([]byte(src), &alert)
+		if err != nil {
+			log.Println("Invalid alert data: ", string(src))
+			return alerts, errors.Wrap(err, "Invalid json format in SNS message")
+		}
+
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
 func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 	alerts := []lib.Alert{}
 
@@ -60,26 +80,36 @@ func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 	return alerts, nil
 }
 
-func alertToReport(cfg *Config, alert *lib.Alert) (*lib.Report, error) {
+func alertToReport(cfg Config, alert lib.Alert) (lib.Report, error) {
 	lib.Dump("alert", alert)
 	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
 
-	reportID, err := alertMap.Lookup(alert.Key, alert.Rule)
-	if err != nil {
-		return nil, err
-	}
-
-	if reportID == nil {
-		// Existing alert issue is not found
-		reportID, err = alertMap.Create(alert.Key, alert.Rule)
-
+	/*
+		reportID, err := alertMap.Lookup(alert.Key, alert.Rule)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failt to create a new alert map")
+			return nil, err
 		}
-		log.Printf("Created a new reportDI: %s", *reportID)
-	}
 
-	report := lib.NewReport(*reportID, alert)
+		if reportID == nil {
+			// Existing alert issue is not found
+			alertData, err := json.Marshal(alert)
+			if err != nil {
+				return nil, errors.Wrap(err, "Fail to marshal alert data")
+			}
+			reportID, err = alertMap.Create(alert.Key, alert.Rule, alertData)
+
+			if err != nil {
+				return nil, errors.Wrap(err, "Failt to create a new alert map")
+			}
+			log.Printf("Created a new reportDI: %s", *reportID)
+		}
+	*/
+
+	reportID, err := alertMap.Sync(alert)
+	if err != nil {
+		return lib.Report{}, err
+	}
+	report := lib.NewReport(reportID, alert)
 
 	return report, nil
 }
@@ -90,7 +120,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 	resp := []string{}
 
 	for _, alert := range alerts {
-		report, err := alertToReport(&cfg, &alert)
+		report, err := alertToReport(cfg, alert)
 		if err != nil {
 			return resp, err
 		}
@@ -119,7 +149,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 }
 
 // HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, event events.KinesisEvent) (ReceptorResponse, error) {
+func HandleRequest(ctx context.Context, event events.SNSEvent) (ReceptorResponse, error) {
 	lib.Dump("Event", event)
 
 	var resp ReceptorResponse
@@ -129,7 +159,7 @@ func HandleRequest(ctx context.Context, event events.KinesisEvent) (ReceptorResp
 		return resp, err
 	}
 
-	events, err := ParseEvent(event)
+	events, err := ParseSnsEvent(event)
 	if err != nil {
 		return resp, err
 	}

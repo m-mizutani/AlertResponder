@@ -1,12 +1,12 @@
-AR_CONFIG ?= "param.cfg"
+AR_CONFIG ?= ${CONFIG}
 
 CODE_S3_BUCKET := $(shell cat $(AR_CONFIG) | grep CodeS3Bucket | cut -d = -f 2)
 CODE_S3_PREFIX := $(shell cat $(AR_CONFIG) | grep CodeS3Prefix | cut -d = -f 2)
 STACK_NAME := $(shell cat $(AR_CONFIG) | grep StackName | cut -d = -f 2)
-PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e NotifyStreamArn -e PolicyLambdaArn -e InspectionDelay -e ReviewDelay | tr '\n' ' ')
+PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e ReviewerLambdaArn -e InspectionDelay -e ReviewDelay | tr '\n' ' ')
 TEMPLATE_FILE=template.yml
 LIBS=lib/*.go
-FUNCTIONS=build/receptor build/dispatcher build/compiler build/publisher build/error-handler
+FUNCTIONS=build/receptor build/dispatcher build/compiler build/publisher build/error-handler build/novice-reviewer
 
 all: cli
 
@@ -23,6 +23,8 @@ build/publisher: ./functions/publisher/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/publisher ./functions/publisher/
 build/error-handler: ./functions/compiler/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/error-handler ./functions/error-handler/
+build/novice-reviewer: ./functions/novice-reviewer/*.go $(LIBS)
+	env GOARCH=amd64 GOOS=linux go build -o build/novice-reviewer ./functions/novice-reviewer/
 
 functions: $(FUNCTIONS)
 

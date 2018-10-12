@@ -29,9 +29,9 @@ def handler(records, context):
             Item={
                 'report_id': {'S': msg['report_id']},
                 'timestamp': {'N': str(datetime.datetime.utcnow().timestamp())},
-                'report': {'S': json.dumps(msg)},
+                'report': {'B': json.dumps(msg)},
             })
-        
+
         logger.info(res)
-         
+
     return {'message': 'ok'}

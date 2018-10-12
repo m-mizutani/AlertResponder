@@ -28,8 +28,6 @@ func main() {
 	}
 
 	switch args[0] {
-	case "test":
-		doIntegrationTest(&opts)
 	case "params":
 		outputParameters(opts.StackName, opts.Region)
 	default:

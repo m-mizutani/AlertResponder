@@ -12,7 +12,7 @@ install:
 script:
 - touch param.cfg
 - pip install --user awscli
-- make functions
+- make CONFIG=param.cfg functions
 - ./scripts/package-to-all-region.sh
 env:
   global:

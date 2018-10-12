@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+Description: "AlertResponder https://github.com/m-mizutani/AlertResponder"
 Transform: AWS::Serverless-2016-10-31
 Parameters:
   LambdaRoleArn:
@@ -7,14 +8,9 @@ Parameters:
   StepFunctionRoleArn:
     Type: String
     Default: ""
-  NotifyStreamArn:
+  ReviewerLambdaArn:
     Type: String
     Default: ""
-  NotifyQueueArn:
-    Type: String
-    Default: ""
-  PolicyLambdaArn:
-    Type: String
   InspectionDelay:
     Type: Number
     Default: 300
@@ -27,10 +23,8 @@ Conditions:
     Fn::Equals: [ { Ref: LambdaRoleArn }, "" ]
   StepFunctionRoleRequired:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
-  NotifyStreamAvailable:
-    Fn::Not: [!Equals [!Ref NotifyStreamArn, ""]]
-  NotifyQueueAvailable:
-    Fn::Not: [!Equals [!Ref NotifyQueueArn, ""]]
+  NoReviewer:
+    Fn::Equals: [ { Ref: ReviewerLambdaArn }, "" ]
 
 Globals:
   Function:
@@ -48,9 +42,13 @@ Resources:
       AttributeDefinitions:
       - AttributeName: alert_id
         AttributeType: S
+      - AttributeName: timestamp
+        AttributeType: S
       KeySchema:
       - AttributeName: alert_id
         KeyType: HASH
+      - AttributeName: timestamp
+        KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
@@ -77,7 +75,7 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
-    
+
   # --------------------------------------------------------
   # Kinesis Stream
   TaskStream:
@@ -101,22 +99,22 @@ Resources:
             {"StartAt":"Waiting","States":{"Waiting":{"Type":"Wait","Next":"Exec","Seconds":${delay}},"Exec":{"Type":"Task","Resource":"${lambdaArn}","End":true}}}
           - {lambdaArn: !GetAtt [ Dispatcher, Arn ], delay: {Ref: InspectionDelay }}
 
-  PolicyInvoker:
+  ReviewInvoker:
     Type: AWS::StepFunctions::StateMachine
     Properties:
       StateMachineName:
-        Fn::Sub: ["${StackName}-policy-invoker", {"StackName": {"Ref": "AWS::StackName"} }]
+        Fn::Sub: ["${StackName}-review-invoker", {"StackName": {"Ref": "AWS::StackName"} }]
       RoleArn:
         Fn::If: [ StepFunctionRoleRequired, {"Fn::GetAtt": StepFunctionRole.Arn}, {Ref: StepFunctionRoleArn} ]
       DefinitionString:
         !Sub
           - |-
-            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
+            {"StartAt":"Wating","States":{"Wating":{"Type":"Wait","Next":"Compiler","Seconds":${delay}},"Compiler":{"Type":"Task","Resource":"${compilerArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"Next":"CheckPolicy"},"CheckPolicy":{"Type":"Task","Resource":"${policyLambdaArn}","Catch":[{"ErrorEquals":["States.ALL"],"ResultPath":"$.error","Next":"ErrorHandler"}],"ResultPath":"$.result","Next":"Publish"},"ErrorHandler":{"Type":"Task","Resource":"${errorHandlerArn}","End":true},"Publish":{"Type":"Task","Resource":"${publisherArn}","End":true}}}
           - policyLambdaArn:
-              Ref: PolicyLambdaArn
+              Fn::If: [ NoReviewer, {"Fn::GetAtt": NoviceReviewer.Arn}, {Ref: ReviewerLambdaArn} ]
             compilerArn:
               Fn::GetAtt: Compiler.Arn
-            publisherArn: 
+            publisherArn:
               Fn::GetAtt: Publisher.Arn
             errorHandlerArn:
               Fn::GetAtt: ErrorHandler.Arn
@@ -139,9 +137,16 @@ Resources:
           DISPATCH_MACHINE:
             Ref: DelayDispatcher
           REVIEW_MACHINE:
-            Ref: PolicyInvoker
+            Ref: ReviewInvoker
           REPORT_LINE:
             Ref: ReportLine
+      Events:
+        NotifyTopic:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: AlertNotification
+
 
   Dispatcher:
     Type: AWS::Serverless::Function
@@ -154,7 +159,7 @@ Resources:
             Fn::Sub: ${TaskStream}
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
-        
+
   Compiler:
     Type: AWS::Serverless::Function
     Properties:
@@ -187,8 +192,22 @@ Resources:
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
+  NoviceReviewer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build
+      Handler: novice-reviewer
+      Role:
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+
   # --------------------------------------------------------
   # SNS topics
+  AlertNotification:
+    Type: AWS::SNS::Topic
+
+  TaskNotification:
+    Type: AWS::SNS::Topic
+
   ReportLine:
     Type: AWS::SNS::Topic
 
@@ -209,7 +228,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       Policies:
-        - PolicyName: "AlertResponderLambdaPolicy"
+        - PolicyName: "AlertResponderLambdaReviewer"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -247,7 +266,7 @@ Resources:
                       Region: {"Ref": "AWS::Region"}
                       Account: {"Ref": "AWS::AccountId" }
                   - Fn::Sub:
-                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-policy-invoker"
+                    - "arn:aws:states:${Region}:${Account}:stateMachine:${StackName}-review-invoker"
                     - StackName: {"Ref": "AWS::StackName"}
                       Region: {"Ref": "AWS::Region"}
                       Account: {"Ref": "AWS::AccountId" }
@@ -265,7 +284,7 @@ Resources:
             Action: ["sts:AssumeRole"]
       Path: "/"
       Policies:
-        - PolicyName: "AlertResponderLambdaInvokePolicy"
+        - PolicyName: "AlertResponderLambdaInvokeReviewer"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -273,9 +292,8 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource:
-                  - Ref: PolicyLambdaArn
+                  - Fn::If: [ NoReviewer, {"Fn::GetAtt": NoviceReviewer.Arn}, {Ref: ReviewerLambdaArn} ]
                   - Fn::GetAtt: Dispatcher.Arn
                   - Fn::GetAtt: ErrorHandler.Arn
                   - Fn::GetAtt: Compiler.Arn
                   - Fn::GetAtt: Publisher.Arn
-
