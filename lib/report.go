@@ -20,11 +20,11 @@ type Report struct {
 	Content ReportContent `json:"content"`
 	Result  *ReportResult `json:"result"`
 	Status  string        `json:"status"`
-	// Status must be "Received" or "Published".
+	// Status must be "new" or "published".
 	//
-	// Received: This status means that the report is issued by Receptor.
-	//           No inspect information
-	// Published: When publisher receives report with result, report status
+	// new: This status means that the report is issued by Receptor.
+	//      No inspect information
+	// published: When publisher receives report with result, report status
 	//            is "published".
 	//
 }

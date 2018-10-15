@@ -1,4 +1,8 @@
-AR_CONFIG ?= ${CONFIG}
+AR_CONFIG ?= param.cfg
+
+ifeq (,$(wildcard $(AR_CONFIG)))
+    $(error $(AR_CONFIG) is not found)
+endif
 
 CODE_S3_BUCKET := $(shell cat $(AR_CONFIG) | grep CodeS3Bucket | cut -d = -f 2)
 CODE_S3_PREFIX := $(shell cat $(AR_CONFIG) | grep CodeS3Prefix | cut -d = -f 2)
