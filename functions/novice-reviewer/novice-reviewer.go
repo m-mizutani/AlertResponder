@@ -11,7 +11,7 @@ import (
 func HandleRequest(ctx context.Context, report ar.Report) (ar.ReportResult, error) {
 	ar.Dump("report", report)
 
-	res := ar.ReportResult{Severity: "unknown"}
+	res := ar.ReportResult{Severity: "unclassified"}
 
 	return res, nil
 }

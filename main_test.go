@@ -294,7 +294,7 @@ func genAlert() lib.Alert {
 		Attrs: []lib.Attribute{
 			lib.Attribute{
 				Type:    "ipaddr",
-				Value:   "10.0.0.1",
+				Value:   "195.22.26.248",
 				Key:     "source address",
 				Context: []string{"remote"},
 			},
@@ -334,7 +334,7 @@ func TestInvokeBySns(t *testing.T) {
 	assert.Equal(t, 1, len(results))
 }
 
-func TestNormal(t *testing.T) {
+func TestIntegration(t *testing.T) {
 	params := getTestParams()
 	if Verbose {
 		pp.Println("params: ", params)
