@@ -13,13 +13,15 @@ import (
 )
 
 type ReportID string
+type ReportStatus string
+type ReportSeverity string
 
 type Report struct {
 	ID      ReportID      `json:"report_id"`
 	Alert   Alert         `json:"alert"`
 	Content ReportContent `json:"content"`
 	Result  *ReportResult `json:"result"`
-	Status  string        `json:"status"`
+	Status  ReportStatus  `json:"status"`
 	// Status must be "new" or "published".
 	//
 	// new: This status means that the report is issued by Receptor.
@@ -28,6 +30,16 @@ type Report struct {
 	//            is "published".
 	//
 }
+
+// IsNew and IsPublished returns status of the report
+func (x *Report) IsNew() bool       { return x.Status == StatusNew }
+func (x *Report) IsPublished() bool { return x.Status == StatusPublished }
+
+const (
+	StatusNew       ReportStatus = "new"
+	StatusOngoing   ReportStatus = "ongoing"
+	StatusPublished ReportStatus = "published"
+)
 
 type ReportContent struct {
 	RemoteHosts  map[string]ReportRemoteHost `json:"remote_hosts"`
@@ -58,8 +70,19 @@ func NewReportPage() ReportPage {
 }
 
 type ReportResult struct {
-	Severity string `json:"severity"`
+	Severity ReportSeverity `json:"severity"`
+	// Severity must be chosen from "undamaged", "unclassified", "emergency"
+	//
+	// urgent: Your system is damaged actually or there are strong evidence(s) of exploting system. Also incident may be on going.
+	// unclassified: Not classfied and you need to check it by ownself.
+	// safe: No damage by events of the alert and there is nothing to do.
 }
+
+const (
+	SevHigh         ReportStatus = "high"
+	SevLow          ReportStatus = "low"
+	SevUnclassified ReportStatus = "unclassified"
+)
 
 type ReportUser struct {
 	UserName     string               `json:"username"` // Identity

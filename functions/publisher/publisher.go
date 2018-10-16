@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
 )
@@ -36,7 +38,7 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 		return "", err
 	}
 
-	report.Status = "published"
+	report.Status = lib.StatusPublished
 	err = lib.PublishSnsMessage(params.reportLine, params.region, report)
 	if err != nil {
 		return "Error", err
@@ -46,5 +48,8 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 }
 
 func main() {
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetLevel(log.InfoLevel)
+
 	lambda.Start(HandleRequest)
 }

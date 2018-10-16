@@ -41,18 +41,20 @@ func GenAlertKey(alertID, rule string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
 
-func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
+func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	var reportID lib.ReportID
+	var isNew bool
+
 	alertID := GenAlertKey(alert.Key, alert.Rule)
 	alertData, err := json.Marshal(alert)
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to unmarshal alert")
+		return reportID, isNew, errors.Wrap(err, "Fail to unmarshal alert")
 	}
 
 	var records []AlertRecord
 	err = x.table.Get("alert_id", alertID).All(&records)
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to get cache")
+		return reportID, isNew, errors.Wrap(err, "Fail to get cache")
 	}
 
 	var record AlertRecord
@@ -63,8 +65,10 @@ func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
 			Rule:     alert.Rule,
 			ReportID: lib.NewReportID(),
 		}
+		isNew = true
 	} else {
 		record = records[0]
+		isNew = false
 	}
 
 	record.AlertData = alertData
@@ -74,8 +78,8 @@ func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
 	lib.Dump("AlertRecord", record)
 	err = x.table.Put(&record).Run()
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to put alert map")
+		return reportID, isNew, errors.Wrap(err, "Fail to put alert map")
 	}
 
-	return record.ReportID, nil
+	return record.ReportID, isNew, nil
 }

@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Config is data structure for emitter main procedure
@@ -84,32 +85,16 @@ func alertToReport(cfg Config, alert lib.Alert) (lib.Report, error) {
 	lib.Dump("alert", alert)
 	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
 
-	/*
-		reportID, err := alertMap.Lookup(alert.Key, alert.Rule)
-		if err != nil {
-			return nil, err
-		}
-
-		if reportID == nil {
-			// Existing alert issue is not found
-			alertData, err := json.Marshal(alert)
-			if err != nil {
-				return nil, errors.Wrap(err, "Fail to marshal alert data")
-			}
-			reportID, err = alertMap.Create(alert.Key, alert.Rule, alertData)
-
-			if err != nil {
-				return nil, errors.Wrap(err, "Failt to create a new alert map")
-			}
-			log.Printf("Created a new reportDI: %s", *reportID)
-		}
-	*/
-
-	reportID, err := alertMap.Sync(alert)
+	reportID, isNew, err := alertMap.sync(alert)
 	if err != nil {
 		return lib.Report{}, err
 	}
 	report := lib.NewReport(reportID, alert)
+	if isNew {
+		report.Status = lib.StatusNew
+	} else {
+		report.Status = lib.StatusOngoing
+	}
 
 	return report, nil
 }
@@ -130,9 +115,11 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 			return resp, errors.Wrap(err, "Fail to start DispatchMachine")
 		}
 
-		err = lib.ExecDelayMachine(os.Getenv("REVIEW_MACHINE"), cfg.Region, report)
-		if err != nil {
-			return resp, errors.Wrap(err, "Fail to start ReviewMachine")
+		if report.IsNew() {
+			err = lib.ExecDelayMachine(os.Getenv("REVIEW_MACHINE"), cfg.Region, report)
+			if err != nil {
+				return resp, errors.Wrap(err, "Fail to start ReviewMachine")
+			}
 		}
 
 		report.Status = "new"
@@ -174,5 +161,7 @@ func HandleRequest(ctx context.Context, event events.SNSEvent) (ReceptorResponse
 }
 
 func main() {
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetLevel(log.InfoLevel)
 	lambda.Start(HandleRequest)
 }
