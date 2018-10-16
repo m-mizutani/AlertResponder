@@ -8,41 +8,11 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
-
-func getSnsTopicArn(region, stackName string) (string, error) {
-	log.WithFields(log.Fields{
-		"stackName": stackName,
-		"region":    region,
-	}).Info("Try to get CFn resources")
-
-	ssn := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
-	client := cloudformation.New(ssn)
-
-	resp, err := client.DescribeStackResources(&cloudformation.DescribeStackResourcesInput{
-		StackName: aws.String(stackName),
-	})
-	if err != nil {
-		return "", errors.Wrap(err, stackName)
-	}
-
-	log.WithField("resources", resp.StackResources).Debug("CFn stacks")
-	for _, resource := range resp.StackResources {
-		if *resource.LogicalResourceId == "AlertNotification" {
-			log.WithField("resource", resource).Info("Found SNS topic")
-			return *resource.PhysicalResourceId, nil
-		}
-	}
-
-	return "", errors.New("AlertNotification is not found in " + stackName)
-}
 
 func sendAlert(region, topicArn string, alert lib.Alert) error {
 	ssn := session.Must(session.NewSession(&aws.Config{
@@ -81,7 +51,7 @@ func alertCommand(region, stackName, alertFile string, genAlertKey bool) error {
 		return errors.Wrap(err, alertFile)
 	}
 
-	topicArn, err := getSnsTopicArn(region, stackName)
+	topicArn, err := lib.GetPhysicalResourceId(region, stackName, "AlertNotification")
 	if err != nil {
 		return err
 	}

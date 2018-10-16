@@ -61,10 +61,7 @@ func main() {
 	app.Name = "arcli"
 	app.Usage = "AlertResponder Command Line Interface"
 	app.Version = "0.0.1"
-	app.Action = func(c *cli.Context) error {
-		fmt.Println("Hello friend!")
-		return nil
-	}
+
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "stack-name, s",
@@ -76,8 +73,9 @@ func main() {
 			EnvVar: "AR_CONFIG",
 		},
 		cli.StringFlag{
-			Name:  "region, r",
-			Usage: "AWS region",
+			Name:   "region, r",
+			Usage:  "AWS region",
+			EnvVar: "AWS_REGION",
 		},
 	}
 
@@ -107,10 +105,26 @@ func main() {
 			},
 		},
 		{
-			Name:  "parameters",
-			Usage: "N/A",
-			Action: func(c *cli.Context) error {
-				return nil
+			Name:  "report",
+			Usage: "Report Management",
+			Subcommands: []cli.Command{
+				{
+					Name:  "export",
+					Usage: "Export stored report data on CloudFormation Stack",
+					Action: func(c *cli.Context) error {
+						reportID := c.String("report-id")
+						if reportID == "" {
+							log.Fatal("No reportID, --report-id option is required")
+						}
+						return nil
+					},
+				},
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "report-id",
+					Usage: "Target Report ID",
+				},
 			},
 		},
 	}
