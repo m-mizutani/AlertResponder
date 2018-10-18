@@ -130,6 +130,7 @@ Resources:
       Handler: receptor
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           ALERT_MAP:

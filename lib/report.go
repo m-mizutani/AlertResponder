@@ -20,7 +20,7 @@ type Report struct {
 	ID      ReportID      `json:"report_id"`
 	Alert   Alert         `json:"alert"`
 	Content ReportContent `json:"content"`
-	Result  *ReportResult `json:"result"`
+	Result  ReportResult  `json:"result"`
 	Status  ReportStatus  `json:"status"`
 	// Status must be "new" or "published".
 	//
@@ -79,9 +79,9 @@ type ReportResult struct {
 }
 
 const (
-	SevHigh         ReportStatus = "high"
-	SevLow          ReportStatus = "low"
-	SevUnclassified ReportStatus = "unclassified"
+	SevHigh         ReportSeverity = "high"
+	SevLow          ReportSeverity = "low"
+	SevUnclassified ReportSeverity = "unclassified"
 )
 
 type ReportUser struct {
