@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var alertTimeToLive = time.Second * 86400
+
 type AlertMap struct {
 	table dynamo.Table
 }
@@ -51,8 +53,12 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 		return reportID, isNew, errors.Wrap(err, "Fail to unmarshal alert")
 	}
 
+	now := time.Now().UTC()
+	ttl := now.Add(alertTimeToLive)
+
 	var records []AlertRecord
-	err = x.table.Get("alert_id", alertID).All(&records)
+	err = x.table.Get("alert_id", alertID).Filter("'TTL' > ?", now).All(&records)
+
 	if err != nil {
 		return reportID, isNew, errors.Wrap(err, "Fail to get cache")
 	}
@@ -72,8 +78,8 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	}
 
 	record.AlertData = alertData
-	record.Timestamp = time.Now().UTC()
-	record.TTL = time.Now().UTC().Add(time.Second * 86400)
+	record.Timestamp = now
+	record.TTL = ttl
 
 	lib.Dump("AlertRecord", record)
 	err = x.table.Put(&record).Run()
