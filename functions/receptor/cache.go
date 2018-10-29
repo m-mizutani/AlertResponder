@@ -11,6 +11,7 @@ import (
 	"github.com/guregu/dynamo"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 var alertTimeToLive = time.Second * 86400
@@ -72,7 +73,9 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 			ReportID: lib.NewReportID(),
 		}
 		isNew = true
+		log.WithField("record", record).Info("New alert is created")
 	} else {
+		log.WithField("records", records).Info("Existing alert is found")
 		record = records[0]
 		isNew = false
 	}
