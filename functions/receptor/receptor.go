@@ -82,7 +82,8 @@ func ParseEvent(event events.KinesisEvent) ([]lib.Alert, error) {
 }
 
 func alertToReport(cfg Config, alert lib.Alert) (lib.Report, error) {
-	lib.Dump("alert", alert)
+	log.WithField("alert", alert).Info("Convert alert to report")
+
 	alertMap := NewAlertMap(cfg.AlertMapName, cfg.Region)
 
 	reportID, isNew, err := alertMap.sync(alert)
@@ -101,7 +102,7 @@ func alertToReport(cfg Config, alert lib.Alert) (lib.Report, error) {
 
 // Handler is main logic of Emitter
 func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
-	log.Printf("Start handling %d alert(s)\n", len(alerts))
+	log.WithField("alerts", alerts).Info("Start handler")
 	resp := []string{}
 
 	for _, alert := range alerts {
@@ -128,7 +129,6 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 			return resp, err
 		}
 
-		log.Println("put alert to task stream")
 		resp = append(resp, string(report.ID))
 	}
 
@@ -137,7 +137,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 
 // HandleRequest is Lambda handler
 func HandleRequest(ctx context.Context, event events.SNSEvent) (ReceptorResponse, error) {
-	lib.Dump("Event", event)
+	log.WithField("event", event).Info("Start")
 
 	var resp ReceptorResponse
 

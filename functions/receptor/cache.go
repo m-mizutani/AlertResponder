@@ -49,6 +49,7 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	var isNew bool
 
 	alertID := GenAlertKey(alert.Key, alert.Rule)
+	log.WithField("alertID", alertID).Info("AlertID generated")
 	alertData, err := json.Marshal(alert)
 	if err != nil {
 		return reportID, isNew, errors.Wrap(err, "Fail to unmarshal alert")
@@ -58,11 +59,11 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	ttl := now.Add(alertTimeToLive)
 
 	var records []AlertRecord
-	err = x.table.Get("alert_id", alertID).Filter("'TTL' > ?", now).All(&records)
-
+	err = x.table.Get("alert_id", alertID).Filter("'ttl' > ?", now).All(&records)
 	if err != nil {
 		return reportID, isNew, errors.Wrap(err, "Fail to get cache")
 	}
+	log.WithField("records", records).Info("Fetched alert records")
 
 	var record AlertRecord
 	if len(records) == 0 {
@@ -84,7 +85,7 @@ func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	record.Timestamp = now
 	record.TTL = ttl
 
-	lib.Dump("AlertRecord", record)
+	log.WithField("AlertRecord", record).Info("Put record")
 	err = x.table.Put(&record).Run()
 	if err != nil {
 		return reportID, isNew, errors.Wrap(err, "Fail to put alert map")
