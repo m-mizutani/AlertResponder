@@ -10,10 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	InspectorTest = false
-)
-
+// Inspector is callback function type.
 type Inspector func(task Task) (*ReportPage, error)
 
 func handleRequest(ctx context.Context, event events.KinesisEvent, f Inspector, tableArn string) (string, error) {

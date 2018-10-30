@@ -49,3 +49,18 @@ func (x *Alert) Body() string {
 
 	return strings.Join(lines, "\n")
 }
+
+// Match checks attribute type and context.
+func (x *Attribute) Match(context, attrType string) bool {
+	if x.Type != attrType {
+		return false
+	}
+
+	for _, ctx := range x.Context {
+		if ctx == context {
+			return true
+		}
+	}
+
+	return false
+}
