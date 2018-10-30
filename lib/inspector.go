@@ -64,3 +64,8 @@ func Inspect(f Inspector, tableArn string) {
 		return handleRequest(ctx, event, f, tableArn)
 	})
 }
+
+func InspectTest(f Inspector, task Task) (*ReportPage, error) {
+	page, err := f(task)
+	return page, err
+}
