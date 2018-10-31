@@ -49,6 +49,7 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 		task := lib.Task{
 			Attr:     attr,
 			ReportID: report.ID,
+			Alert:    report.Alert,
 		}
 
 		lib.Dump("task", task)
