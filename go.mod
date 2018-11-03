@@ -12,5 +12,6 @@ require (
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.2.0
 	github.com/stretchr/testify v1.2.2
+	github.com/urfave/cli v1.20.0
 	golang.org/x/net v0.0.0-20181102091132-c10e9556a7bc // indirect
 )
