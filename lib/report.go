@@ -2,7 +2,7 @@ package lib
 
 import (
 	"encoding/json"
-	"log"
+
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +10,8 @@ import (
 	"github.com/guregu/dynamo"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
+
 )
 
 type ReportID string
@@ -209,6 +211,10 @@ func (x *ReportComponent) Submit(tableName, region string) error {
 
 	x.TimeToLive = time.Now().UTC().Add(time.Second * 864000)
 
+	log.WithFields(log.Fields{
+		"component": x,
+		"tableName": tableName,
+	}).Info("Put component")
 	err := table.Put(x).Run()
 	if err != nil {
 		return errors.Wrap(err, "Fail to put report data")

@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/k0kubun/pp"
-	gp "github.com/m-mizutani/AlertResponder/generalprobe"
+	gp "github.com/m-mizutani/generalprobe"
 	"github.com/m-mizutani/AlertResponder/lib"
 
 )
@@ -35,12 +35,8 @@ type testParams struct {
 	StackName         string `json:"StackName"`
 	Region            string `json:"Region"`
 	ReportResults     string `json:"ReportResultsArn"`
-	TaskStream        string
-	ReportData        string
-	Receptor          string
-	AlertMap          string
-	AlertNotification string
 }
+
 
 func loadTestConfig(fpath string) testParams {
 	fd, err := os.Open(fpath)
@@ -116,11 +112,11 @@ func TestInvokeBySns(t *testing.T) {
 	require.NoError(t, err)
 	now := time.Now().UTC()
 
-	playbook := gp.NewPlaybook(params.Region, params.StackName)
-	playbook.SetScenario([]gp.Scene{
+	g := gp.New(params.Region, params.StackName)
+	g.AddScenes([]gp.Scene{
 		gp.PublishSnsMessage("AlertNotification", alertData),
 		gp.Pause(3),
-		gp.GetDynamoRecord("AlertMap", func(table dynamo.Table) (bool, error) {
+		gp.GetDynamoRecord("AlertMap", func(table dynamo.Table) bool {
 
 			type AlertRecord struct {
 				AlertID   string       `dynamo:"alert_id"`
@@ -136,20 +132,19 @@ func TestInvokeBySns(t *testing.T) {
 
 			err := table.Scan().Filter("'timestamp' >= ?", now).All(&results)
 			if err != nil {
-				return false, err
+				return false
 			}
 
 			if len(results) == 0 {
-				return false, nil
+				return false
 			}
 
 			assert.Equal(t, 1, len(results))
-			return true, nil
+			return true
 		}),
 	})
 
-	err = playbook.Act()
-	assert.NoError(t, err)
+	g.Act()
 }
 
 func TestIntegration(t *testing.T) {
@@ -160,8 +155,8 @@ func TestIntegration(t *testing.T) {
 	var reportID string
 	var task lib.Task
 
-	playbook := gp.NewPlaybook(params.Region, params.StackName)
-	playbook.SetScenario([]gp.Scene{
+	g := gp.New(params.Region, params.StackName)
+	g.AddScenes([]gp.Scene{
 		gp.InvokeLambda("Receptor", func(payload []byte) {
 			var resp struct {
 				ReportIDs []string `json:"report_ids"`
@@ -190,19 +185,20 @@ func TestIntegration(t *testing.T) {
 			cmpt := lib.NewReportComponent(lib.ReportID(reportID))
 			cmpt.SetPage(page)
 
-			err = cmpt.Submit(params.ReportData, params.Region)
+			reportDataTable := g.LookupID("ReportData")
+			err = cmpt.Submit(reportDataTable, params.Region)
 			require.NoError(t, err)
 			return true
 		}),
 
 		gp.Pause(10),
-		gp.GetDynamoRecord(params.ReportResults, func(table dynamo.Table) (bool, error) {
+		gp.GetDynamoRecord(params.ReportResults, func(table dynamo.Table) bool {
 			// Check eventual result(s)
 			var results []reportResult
 			err := table.Get("report_id", reportID).All(&results)
 			require.NoError(t, err)
 			if 2 != len(results) {
-				return false, nil
+				return false
 			}
 
 			reports := []lib.Report{}
@@ -220,10 +216,10 @@ func TestIntegration(t *testing.T) {
 			assert.Equal(t, 0, len(reports[0].Content.LocalHosts))
 			assert.NotEqual(t, 0, len(reports[1].Content.RemoteHosts))
 			assert.Equal(t, 0, len(reports[1].Content.LocalHosts))
-			return true, nil
+			return true
 		}).SetTargetType(gp.ARN),
 	})
 
-	playbook.Act()
+	g.Act()
 	return
 }
