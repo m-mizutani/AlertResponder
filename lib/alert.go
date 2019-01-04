@@ -50,6 +50,11 @@ func (x *Alert) Body() string {
 	return strings.Join(lines, "\n")
 }
 
+// AddAttribute just appends the attribute to the Alert
+func (x *Alert) AddAttribute(attr Attribute) {
+	x.Attrs = append(x.Attrs, attr)
+}
+
 // Match checks attribute type and context.
 func (x *Attribute) Match(context, attrType string) bool {
 	if x.Type != attrType {
