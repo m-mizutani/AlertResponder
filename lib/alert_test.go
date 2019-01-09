@@ -33,4 +33,12 @@ func TestAddAttribute(t *testing.T) {
 	alert.AddAttribute(attr)
 	assert.Equal(t, 1, len(alert.Attrs))
 	assert.Equal(t, "10.2.3.4", alert.Attrs[0].Value)
+
+	alert.AddAttributes([]lib.Attribute{
+		{Key: "test1", Value: "value1"},
+		{Key: "test2", Value: "value2"},
+	})
+
+	assert.Equal(t, 3, len(alert.Attrs))
+	assert.Equal(t, "value2", alert.Attrs[2].Value)
 }

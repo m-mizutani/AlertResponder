@@ -55,6 +55,11 @@ func (x *Alert) AddAttribute(attr Attribute) {
 	x.Attrs = append(x.Attrs, attr)
 }
 
+// AddAttributes appends set of attribute to the Alert
+func (x *Alert) AddAttributes(attrs []Attribute) {
+	x.Attrs = append(x.Attrs, attrs...)
+}
+
 // Match checks attribute type and context.
 func (x *Attribute) Match(context, attrType string) bool {
 	if x.Type != attrType {
