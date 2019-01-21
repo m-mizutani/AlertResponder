@@ -132,6 +132,7 @@ type ReportAlliedHost struct {
 	MACAddr      []string             `json:"macaddr"`
 	HostName     []string             `json:"hostname"`
 	Country      []string             `json:"country"`
+	Software     []string             `json:"software"`
 	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
