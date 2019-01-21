@@ -2,7 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Attribute is element of alert
@@ -33,21 +32,6 @@ type Alert struct {
 // Title returns string for Github issue title
 func (x *Alert) Title() string {
 	return fmt.Sprintf("%s: %s", x.Name, x.Description)
-}
-
-// Body returns string for Github issue's main body
-func (x *Alert) Body() string {
-	lines := []string{
-		"## Attributes",
-		"",
-	}
-
-	for _, attr := range x.Attrs {
-		line := fmt.Sprintf("- %s: `%s`", attr.Key, attr.Value)
-		lines = append(lines, line)
-	}
-
-	return strings.Join(lines, "\n")
 }
 
 // AddAttribute just appends the attribute to the Alert

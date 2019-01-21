@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
-
 )
 
 type ReportID string
@@ -44,25 +43,25 @@ const (
 )
 
 type ReportContent struct {
-	RemoteHosts  map[string]ReportRemoteHost `json:"remote_hosts"`
-	LocalHosts   map[string]ReportLocalHost  `json:"local_hosts"`
-	SubjectUsers map[string]ReportURL        `json:"subject_users"`
+	OpponentHosts map[string]ReportOpponentHost `json:"opponent_hosts"`
+	AlliedHosts   map[string]ReportAlliedHost   `json:"allied_hosts"`
+	SubjectUsers  map[string]ReportURL          `json:"subject_users"`
 }
 
 func newReportContent() ReportContent {
 	return ReportContent{
-		RemoteHosts:  map[string]ReportRemoteHost{},
-		LocalHosts:   map[string]ReportLocalHost{},
-		SubjectUsers: map[string]ReportURL{},
+		OpponentHosts: map[string]ReportOpponentHost{},
+		AlliedHosts:   map[string]ReportAlliedHost{},
+		SubjectUsers:  map[string]ReportURL{},
 	}
 }
 
 type ReportPage struct {
-	Title       string             `json:"title"`
-	LocalHost   []ReportLocalHost  `json:"local_hosts"`
-	RemoteHost  []ReportRemoteHost `json:"remote_hosts"`
-	SubjectUser []ReportUser       `json:"subject_users"`
-	Author      string             `json:"author"`
+	Title         string               `json:"title"`
+	AlliedHosts   []ReportAlliedHost   `json:"allied_hosts"`
+	OpponentHosts []ReportOpponentHost `json:"opponent_hosts"`
+	SubjectUser   []ReportUser         `json:"subject_users"`
+	Author        string               `json:"author"`
 }
 
 // NewReportPage is a constructor of ReportPage
@@ -83,6 +82,7 @@ type ReportResult struct {
 const (
 	SevHigh         ReportSeverity = "high"
 	SevLow          ReportSeverity = "low"
+	SevNone         ReportSeverity = "none"
 	SevUnclassified ReportSeverity = "unclassified"
 )
 
@@ -124,16 +124,17 @@ type ReportServiceUsage struct {
 	LastSeen    time.Time `json:"last_seen"`
 }
 
-type ReportLocalHost struct {
+type ReportAlliedHost struct {
 	ID           string               `json:"id"`
 	UserName     []string             `json:"username"`
 	OS           []string             `json:"os"`
 	IPAddr       []string             `json:"ipaddr"`
+	HostName     []string             `json:"hostname"`
 	Country      []string             `json:"country"`
 	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
-func (x *ReportLocalHost) Merge(s ReportLocalHost) {
+func (x *ReportAlliedHost) Merge(s ReportAlliedHost) {
 	x.ID = s.ID
 	x.UserName = append(x.UserName, s.Country...)
 	x.OS = append(x.OS, s.OS...)
@@ -142,7 +143,7 @@ func (x *ReportLocalHost) Merge(s ReportLocalHost) {
 	x.ServiceUsage = append(x.ServiceUsage, s.ServiceUsage...)
 }
 
-type ReportRemoteHost struct {
+type ReportOpponentHost struct {
 	ID             string          `json:"id"`
 	IPAddr         []string        `json:"ipaddr"`
 	Country        []string        `json:"country"`
@@ -152,7 +153,7 @@ type ReportRemoteHost struct {
 	RelatedURLs    []ReportURL     `json:"related_urls"`
 }
 
-func (x *ReportRemoteHost) Merge(s ReportRemoteHost) {
+func (x *ReportOpponentHost) Merge(s ReportOpponentHost) {
 	x.ID = s.ID
 	x.IPAddr = append(x.IPAddr, s.IPAddr...)
 	x.Country = append(x.Country, s.Country...)

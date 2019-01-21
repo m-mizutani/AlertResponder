@@ -5,13 +5,14 @@ package main_test
 
 import (
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	// "github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -21,9 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/k0kubun/pp"
-	gp "github.com/m-mizutani/generalprobe"
 	"github.com/m-mizutani/AlertResponder/lib"
-
+	"github.com/m-mizutani/generalprobe"
 )
 
 var (
@@ -32,11 +32,10 @@ var (
 )
 
 type testParams struct {
-	StackName         string `json:"StackName"`
-	Region            string `json:"Region"`
-	ReportResults     string `json:"ReportResultsArn"`
+	StackName     string `json:"StackName"`
+	Region        string `json:"Region"`
+	ReportResults string `json:"ReportResultsArn"`
 }
-
 
 func loadTestConfig(fpath string) testParams {
 	fd, err := os.Open(fpath)
@@ -112,11 +111,11 @@ func TestInvokeBySns(t *testing.T) {
 	require.NoError(t, err)
 	now := time.Now().UTC()
 
-	g := gp.New(params.Region, params.StackName)
-	g.AddScenes([]gp.Scene{
-		gp.PublishSnsMessage("AlertNotification", alertData),
-		gp.Pause(3),
-		gp.GetDynamoRecord("AlertMap", func(table dynamo.Table) bool {
+	g := generalprobe.New(params.Region, params.StackName)
+	g.AddScenes([]generalprobe.Scene{
+		g.PublishSnsMessage(g.LogicalID("AlertNotification"), alertData),
+		g.Pause(3),
+		g.GetDynamoRecord(g.LogicalID("AlertMap"), func(table dynamo.Table) bool {
 
 			type AlertRecord struct {
 				AlertID   string       `dynamo:"alert_id"`
@@ -144,7 +143,7 @@ func TestInvokeBySns(t *testing.T) {
 		}),
 	})
 
-	g.Act()
+	g.Run()
 }
 
 func TestIntegration(t *testing.T) {
@@ -155,9 +154,9 @@ func TestIntegration(t *testing.T) {
 	var reportID string
 	var task lib.Task
 
-	g := gp.New(params.Region, params.StackName)
-	g.AddScenes([]gp.Scene{
-		gp.InvokeLambda("Receptor", func(payload []byte) {
+	g := generalprobe.New(params.Region, params.StackName)
+	g.AddScenes([]generalprobe.Scene{
+		g.InvokeLambda(g.LogicalID("Receptor"), func(payload []byte) {
 			var resp struct {
 				ReportIDs []string `json:"report_ids"`
 			}
@@ -168,7 +167,7 @@ func TestIntegration(t *testing.T) {
 			reportID = resp.ReportIDs[0]
 		}).SnsMessage(alert),
 
-		gp.GetKinesisStreamRecord("TaskStream", func(data []byte) bool {
+		g.GetKinesisStreamRecord(g.LogicalID("TaskStream"), func(data []byte) bool {
 			err := json.Unmarshal(data, &task)
 			require.NoError(t, err)
 			if string(task.ReportID) != reportID {
@@ -177,10 +176,10 @@ func TestIntegration(t *testing.T) {
 
 			var page lib.ReportPage
 			page.Title = "Test"
-			remote := lib.ReportRemoteHost{
+			remote := lib.ReportOpponentHost{
 				IPAddr: []string{task.Attr.Value},
 			}
-			page.RemoteHost = append(page.RemoteHost, remote)
+			page.OpponentHosts = append(page.OpponentHosts, remote)
 
 			cmpt := lib.NewReportComponent(lib.ReportID(reportID))
 			cmpt.SetPage(page)
@@ -191,8 +190,8 @@ func TestIntegration(t *testing.T) {
 			return true
 		}),
 
-		gp.Pause(10),
-		gp.GetDynamoRecord(params.ReportResults, func(table dynamo.Table) bool {
+		g.Pause(10),
+		g.GetDynamoRecord(g.Arn(params.ReportResults), func(table dynamo.Table) bool {
 			// Check eventual result(s)
 			var results []reportResult
 			err := table.Get("report_id", reportID).All(&results)
@@ -212,14 +211,14 @@ func TestIntegration(t *testing.T) {
 				reports = append(reports, report)
 			}
 
-			assert.Equal(t, 0, len(reports[0].Content.RemoteHosts))
-			assert.Equal(t, 0, len(reports[0].Content.LocalHosts))
-			assert.NotEqual(t, 0, len(reports[1].Content.RemoteHosts))
-			assert.Equal(t, 0, len(reports[1].Content.LocalHosts))
+			assert.Equal(t, 0, len(reports[0].Content.OpponentHosts))
+			assert.Equal(t, 0, len(reports[0].Content.AlliedHosts))
+			assert.NotEqual(t, 0, len(reports[1].Content.OpponentHosts))
+			assert.Equal(t, 0, len(reports[1].Content.AlliedHosts))
 			return true
-		}).SetTargetType(gp.ARN),
+		}),
 	})
 
-	g.Act()
+	g.Run()
 	return
 }

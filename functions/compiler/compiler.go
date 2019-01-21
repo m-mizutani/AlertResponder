@@ -50,22 +50,22 @@ func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) 
 	log.WithField("pages", pages).Info("Fetched pages")
 
 	c := &report.Content
-	c.RemoteHosts = map[string]lib.ReportRemoteHost{}
-	c.LocalHosts = map[string]lib.ReportLocalHost{}
+	c.OpponentHosts = map[string]lib.ReportOpponentHost{}
+	c.AlliedHosts = map[string]lib.ReportAlliedHost{}
 
 	for _, page := range pages {
-		for _, r := range page.RemoteHost {
+		for _, r := range page.OpponentHosts {
 			log.WithField("id", r.ID).Info("set section to remote")
-			h, _ := c.RemoteHosts[r.ID]
+			h, _ := c.OpponentHosts[r.ID]
 			h.Merge(r)
-			c.RemoteHosts[r.ID] = h
+			c.OpponentHosts[r.ID] = h
 		}
 
-		for _, r := range page.LocalHost {
+		for _, r := range page.AlliedHosts {
 			log.WithField("id", r.ID).Info("set section to local")
-			h, _ := c.LocalHosts[r.ID]
+			h, _ := c.AlliedHosts[r.ID]
 			h.Merge(r)
-			c.LocalHosts[r.ID] = h
+			c.AlliedHosts[r.ID] = h
 		}
 	}
 
