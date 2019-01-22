@@ -72,18 +72,20 @@ func NewReportPage() ReportPage {
 
 type ReportResult struct {
 	Severity ReportSeverity `json:"severity"`
+	Reason   string         `json:"reason"`
 	// Severity must be chosen from "undamaged", "unclassified", "emergency"
 	//
-	// urgent: Your system is damaged actually or there are strong evidence(s) of exploting system. Also incident may be on going.
-	// unclassified: Not classfied and you need to check it by ownself.
-	// safe: No damage by events of the alert and there is nothing to do.
 }
 
 const (
-	SevHigh         ReportSeverity = "high"
-	SevLow          ReportSeverity = "low"
-	SevNone         ReportSeverity = "none"
+	// SevUrgent (urgent): Your system is damaged actually or there are strong evidence(s) of exploting system. Also incident may be on going.
+	SevUrgent ReportSeverity = "urgent"
+
+	// SevUnclassified (unclassified): Not classfied and you need to check it by ownself.
 	SevUnclassified ReportSeverity = "unclassified"
+
+	// SevSafe (safe): No damage by events of the alert and there is nothing to do.
+	SevSafe ReportSeverity = "safe"
 )
 
 type ReportUser struct {
