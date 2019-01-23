@@ -44,6 +44,18 @@ func (x *Alert) AddAttributes(attrs []Attribute) {
 	x.Attrs = append(x.Attrs, attrs...)
 }
 
+// FindAttributes searches and returns matched attributes
+func (x *Alert) FindAttributes(key string) []Attribute {
+	var attrs []Attribute
+	for _, attr := range x.Attrs {
+		if attr.Key == key {
+			attrs = append(attrs, attr)
+		}
+	}
+
+	return attrs
+}
+
 // Match checks attribute type and context.
 func (x *Attribute) Match(context, attrType string) bool {
 	if x.Type != attrType {
