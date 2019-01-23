@@ -142,9 +142,13 @@ type ReportAlliedHost struct {
 func (x *ReportAlliedHost) Merge(s ReportAlliedHost) {
 	x.ID = s.ID
 	x.UserName = append(x.UserName, s.Country...)
+	x.Owner = append(x.Owner, s.Owner...)
 	x.OS = append(x.OS, s.OS...)
 	x.IPAddr = append(x.IPAddr, s.IPAddr...)
+	x.MACAddr = append(x.MACAddr, s.MACAddr...)
+	x.HostName = append(x.HostName, s.HostName...)
 	x.Country = append(x.Country, s.Country...)
+	x.Software = append(x.Software, s.Software...)
 	x.ServiceUsage = append(x.ServiceUsage, s.ServiceUsage...)
 }
 
