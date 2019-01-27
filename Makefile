@@ -1,14 +1,5 @@
-AR_CONFIG ?= param.cfg
-
-ifeq (,$(wildcard $(AR_CONFIG)))
-    $(error $(AR_CONFIG) is not found)
-endif
-
-CODE_S3_BUCKET := $(shell cat $(AR_CONFIG) | grep CodeS3Bucket | cut -d = -f 2)
-CODE_S3_PREFIX := $(shell cat $(AR_CONFIG) | grep CodeS3Prefix | cut -d = -f 2)
-STACK_NAME := $(shell cat $(AR_CONFIG) | grep StackName | cut -d = -f 2)
-PARAMETERS := $(shell cat $(AR_CONFIG) | grep -e LambdaRoleArn -e StepFunctionRoleArn -e ReviewerLambdaArn -e InspectionDelay -e ReviewDelay | tr '\n' ' ')
 TEMPLATE_FILE=template.yml
+OUTPUT_FILE=sam.yml
 LIBS=lib/*.go
 FUNCTIONS=build/receptor build/dispatcher build/compiler build/publisher build/error-handler build/novice-reviewer
 
@@ -16,6 +7,9 @@ all: cli
 
 cli:
 	go build -o arcli
+
+build/helper: helper/*.go
+	go build -o build/helper ./helper/
 
 build/receptor: ./functions/receptor/*.go $(LIBS)
 	env GOARCH=amd64 GOOS=linux go build -o build/receptor ./functions/receptor/
@@ -38,16 +32,16 @@ clean:
 test:
 	go test -v ./lib/
 
-sam.yml: $(TEMPLATE_FILE) $(FUNCTIONS)
+sam.yml: $(TEMPLATE_FILE) $(FUNCTIONS) build/helper
 	aws cloudformation package \
 		--template-file $(TEMPLATE_FILE) \
-		--s3-bucket $(CODE_S3_BUCKET) \
-		--s3-prefix $(CODE_S3_PREFIX) \
-		--output-template-file sam.yml
+		--s3-bucket $(shell ./build/helper get CodeS3Bucket) \
+		--s3-prefix $(shell ./build/helper get CodeS3Prefix) \
+		--output-template-file $(OUTPUT_FILE)
 
-deploy: sam.yml
+deploy: $(OUTPUT_FILE) build/helper
 	aws cloudformation deploy \
-		--template-file sam.yml \
-		--stack-name $(STACK_NAME) \
-		--capabilities CAPABILITY_IAM \
-		--parameter-overrides $(PARAMETERS)
+		--template-file $(OUTPUT_FILE) \
+		--stack-name $(shell ./build/helper get StackName) \
+		--capabilities CAPABILITY_IAM $(shell ./build/helper mkparam)
+
