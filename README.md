@@ -58,6 +58,7 @@ Prepare a parameter file, e.g. `config.json` and run make command.
 $ cat config.json
 {
   "StackName": "your-alert-responder-name",
+  "TestStackName": "your-test-stack-name",
   "CodeS3Bucket": "your-some-bucket",
   "CodeS3Prefix": "for-example-functions",
 
