@@ -32,26 +32,26 @@ func buildParameters(ctx context.Context) (*parameters, error) {
 }
 
 // HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
+func handleRequest(ctx context.Context, report lib.Report) error {
 	logger.WithField("report", report).Info("Start")
 
 	params, err := buildParameters(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	report.Status = lib.StatusPublished
 	err = lib.PublishSnsMessage(params.reportNotification, params.region, report)
 	if err != nil {
-		return "Error", err
+		return err
 	}
 
-	return "Good", nil
+	return nil
 }
 
 func main() {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetLevel(logrus.InfoLevel)
 
-	lambda.Start(HandleRequest)
+	lambda.Start(handleRequest)
 }

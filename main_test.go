@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	// "github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +30,13 @@ import (
 var (
 	Verbose        = os.Getenv("AR_VERBOSE") != ""
 	TestConfigPath = os.Getenv("AR_TEST_CONFIG")
+	logger         = logrus.New()
 )
+
+func init() {
+	generalprobe.SetLoggerInfoLevel()
+	logger.SetLevel(logrus.InfoLevel)
+}
 
 type testerParams struct {
 	Region        string `json:"Region"`
@@ -47,18 +53,18 @@ type mainParams struct {
 func loadParameters(fpath string, params interface{}) {
 	fd, err := os.Open(fpath)
 	if err != nil {
-		log.Fatal("Fail to open a parameter file:", fpath, err)
+		logger.Fatal("Fail to open a parameter file:", fpath, err)
 	}
 	defer fd.Close()
 
 	fdata, err := ioutil.ReadAll(fd)
 	if err != nil {
-		log.Fatal("Fail to read a parameter file:", fpath, err)
+		logger.Fatal("Fail to read a parameter file:", fpath, err)
 	}
 
 	err = json.Unmarshal(fdata, &params)
 	if err != nil {
-		log.Fatal("Fail to unmarshal a parameter file", fpath, err)
+		logger.Fatal("Fail to unmarshal a parameter file", fpath, err)
 	}
 }
 
@@ -158,7 +164,7 @@ func TestIntegration(t *testing.T) {
 	params := getMainParameters()
 	tester := getTesterParameters()
 
-	log.WithField("params", params).Debug("Integration test")
+	logger.WithField("params", params).Debug("Integration test")
 
 	alert := genAlert()
 	var reportID string
@@ -170,7 +176,6 @@ func TestIntegration(t *testing.T) {
 		tester.AccountId, tester.ReporterName)
 
 	hasReportID := func(logs []string) bool {
-		pp.Println(logs)
 		for _, line := range logs {
 			if strings.Index(line, reportID) >= 0 {
 				return true
@@ -191,12 +196,24 @@ func TestIntegration(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, len(resp.ReportIDs))
 			reportID = resp.ReportIDs[0]
-			pp.Println(resp)
+			logger.WithField("reportIDs", resp.ReportIDs).Info("Invoked Receptor")
 		}).SnsMessage(alert),
 
 		g.GetLambdaLogs(g.LogicalID("Dispatcher"), "", hasReportID),
 		g.GetLambdaLogs(g.Arn(inspectorArn), "", hasReportID),
 		g.Pause(10),
+		g.GetDynamoRecord(g.LogicalID("ReportData"), func(table dynamo.Table) bool {
+			// Check eventual result(s)
+			var results []lib.ReportComponent
+			err := table.Get("report_id", reportID).All(&results)
+			require.NoError(t, err)
+
+			if len(results) > 0 {
+				return true
+			}
+
+			return false
+		}),
 		g.GetLambdaLogs(g.LogicalID("Compiler"), "", hasReportID),
 		g.GetLambdaLogs(g.LogicalID("Publisher"), "", hasReportID),
 		g.GetLambdaLogs(g.Arn(reporterArn), "", hasReportID),
@@ -256,6 +273,6 @@ func TestIntegration(t *testing.T) {
 		*/
 	})
 
-	g.Run()
+	require.NoError(t, g.Run())
 	return
 }
