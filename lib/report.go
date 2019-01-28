@@ -2,7 +2,7 @@ package lib
 
 import (
 	"encoding/json"
-	"log"
+
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,45 +10,59 @@ import (
 	"github.com/guregu/dynamo"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type ReportID string
+type ReportStatus string
+type ReportSeverity string
 
 type Report struct {
 	ID      ReportID      `json:"report_id"`
 	Alert   Alert         `json:"alert"`
 	Content ReportContent `json:"content"`
-	Result  *ReportResult `json:"result"`
-	Status  string        `json:"status"`
-	// Status must be "Received" or "Published".
+	Result  ReportResult  `json:"result"`
+	Status  ReportStatus  `json:"status"`
+	// Status must be "new" or "published".
 	//
-	// Received: This status means that the report is issued by Receptor.
-	//           No inspect information
-	// Published: When publisher receives report with result, report status
+	// new: This status means that the report is issued by Receptor.
+	//      No inspect information
+	// published: When publisher receives report with result, report status
 	//            is "published".
 	//
 }
 
+// IsNew and IsPublished returns status of the report
+func (x *Report) IsNew() bool       { return x.Status == StatusNew }
+func (x *Report) IsPublished() bool { return x.Status == StatusPublished }
+
+const (
+	StatusNew       ReportStatus = "new"
+	StatusOngoing   ReportStatus = "ongoing"
+	StatusPublished ReportStatus = "published"
+)
+
 type ReportContent struct {
-	RemoteHosts  map[string]ReportRemoteHost `json:"remote_hosts"`
-	LocalHosts   map[string]ReportLocalHost  `json:"local_hosts"`
-	SubjectUsers map[string]ReportURL        `json:"subject_users"`
+	OpponentHosts map[string]ReportOpponentHost `json:"opponent_hosts"`
+	AlliedHosts   map[string]ReportAlliedHost   `json:"allied_hosts"`
+	SubjectUsers  map[string]ReportURL          `json:"subject_users"`
 }
 
 func newReportContent() ReportContent {
 	return ReportContent{
-		RemoteHosts:  map[string]ReportRemoteHost{},
-		LocalHosts:   map[string]ReportLocalHost{},
-		SubjectUsers: map[string]ReportURL{},
+		OpponentHosts: map[string]ReportOpponentHost{},
+		AlliedHosts:   map[string]ReportAlliedHost{},
+		SubjectUsers:  map[string]ReportURL{},
 	}
 }
 
 type ReportPage struct {
-	Title       string             `json:"title"`
-	LocalHost   []ReportLocalHost  `json:"local_hosts"`
-	RemoteHost  []ReportRemoteHost `json:"remote_hosts"`
-	SubjectUser []ReportUser       `json:"subject_users"`
-	Author      string             `json:"author"`
+	Title         string               `json:"title"`
+	AlliedHosts   []ReportAlliedHost   `json:"allied_hosts"`
+	OpponentHosts []ReportOpponentHost `json:"opponent_hosts"`
+	SubjectUser   []ReportUser         `json:"subject_users"`
+	Author        string               `json:"author"`
+	ReportID      ReportID             `json:"report_id"`
 }
 
 // NewReportPage is a constructor of ReportPage
@@ -58,8 +72,22 @@ func NewReportPage() ReportPage {
 }
 
 type ReportResult struct {
-	Severity string `json:"severity"`
+	Severity ReportSeverity `json:"severity"`
+	Reason   string         `json:"reason"`
+	// Severity must be chosen from "undamaged", "unclassified", "emergency"
+	//
 }
+
+const (
+	// SevUrgent (urgent): Your system is damaged actually or there are strong evidence(s) of exploting system. Also incident may be on going.
+	SevUrgent ReportSeverity = "urgent"
+
+	// SevUnclassified (unclassified): Not classfied and you need to check it by ownself.
+	SevUnclassified ReportSeverity = "unclassified"
+
+	// SevSafe (safe): No damage by events of the alert and there is nothing to do.
+	SevSafe ReportSeverity = "safe"
+)
 
 type ReportUser struct {
 	UserName     string               `json:"username"` // Identity
@@ -99,25 +127,33 @@ type ReportServiceUsage struct {
 	LastSeen    time.Time `json:"last_seen"`
 }
 
-type ReportLocalHost struct {
+type ReportAlliedHost struct {
 	ID           string               `json:"id"`
 	UserName     []string             `json:"username"`
+	Owner        []string             `json:"owner"`
 	OS           []string             `json:"os"`
 	IPAddr       []string             `json:"ipaddr"`
+	MACAddr      []string             `json:"macaddr"`
+	HostName     []string             `json:"hostname"`
 	Country      []string             `json:"country"`
+	Software     []string             `json:"software"`
 	ServiceUsage []ReportServiceUsage `json:"service_usage"`
 }
 
-func (x *ReportLocalHost) Merge(s ReportLocalHost) {
+func (x *ReportAlliedHost) Merge(s ReportAlliedHost) {
 	x.ID = s.ID
 	x.UserName = append(x.UserName, s.Country...)
+	x.Owner = append(x.Owner, s.Owner...)
 	x.OS = append(x.OS, s.OS...)
 	x.IPAddr = append(x.IPAddr, s.IPAddr...)
+	x.MACAddr = append(x.MACAddr, s.MACAddr...)
+	x.HostName = append(x.HostName, s.HostName...)
 	x.Country = append(x.Country, s.Country...)
+	x.Software = append(x.Software, s.Software...)
 	x.ServiceUsage = append(x.ServiceUsage, s.ServiceUsage...)
 }
 
-type ReportRemoteHost struct {
+type ReportOpponentHost struct {
 	ID             string          `json:"id"`
 	IPAddr         []string        `json:"ipaddr"`
 	Country        []string        `json:"country"`
@@ -127,7 +163,7 @@ type ReportRemoteHost struct {
 	RelatedURLs    []ReportURL     `json:"related_urls"`
 }
 
-func (x *ReportRemoteHost) Merge(s ReportRemoteHost) {
+func (x *ReportOpponentHost) Merge(s ReportOpponentHost) {
 	x.ID = s.ID
 	x.IPAddr = append(x.IPAddr, s.IPAddr...)
 	x.Country = append(x.Country, s.Country...)
@@ -186,6 +222,10 @@ func (x *ReportComponent) Submit(tableName, region string) error {
 
 	x.TimeToLive = time.Now().UTC().Add(time.Second * 864000)
 
+	log.WithFields(log.Fields{
+		"component": x,
+		"tableName": tableName,
+	}).Info("Put component")
 	err := table.Put(x).Run()
 	if err != nil {
 		return errors.Wrap(err, "Fail to put report data")

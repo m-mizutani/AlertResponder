@@ -11,7 +11,10 @@ import (
 	"github.com/guregu/dynamo"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
+
+var alertTimeToLive = time.Second * 86400
 
 type AlertMap struct {
 	table dynamo.Table
@@ -41,19 +44,26 @@ func GenAlertKey(alertID, rule string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
 
-func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
+func (x *AlertMap) sync(alert lib.Alert) (lib.ReportID, bool, error) {
 	var reportID lib.ReportID
+	var isNew bool
+
 	alertID := GenAlertKey(alert.Key, alert.Rule)
+	log.WithField("alertID", alertID).Info("AlertID generated")
 	alertData, err := json.Marshal(alert)
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to unmarshal alert")
+		return reportID, isNew, errors.Wrap(err, "Fail to unmarshal alert")
 	}
 
+	now := time.Now().UTC()
+	ttl := now.Add(alertTimeToLive)
+
 	var records []AlertRecord
-	err = x.table.Get("alert_id", alertID).All(&records)
+	err = x.table.Get("alert_id", alertID).Filter("'ttl' > ?", now).All(&records)
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to get cache")
+		return reportID, isNew, errors.Wrap(err, "Fail to get cache")
 	}
+	log.WithField("records", records).Info("Fetched alert records")
 
 	var record AlertRecord
 	if len(records) == 0 {
@@ -63,19 +73,23 @@ func (x *AlertMap) Sync(alert lib.Alert) (lib.ReportID, error) {
 			Rule:     alert.Rule,
 			ReportID: lib.NewReportID(),
 		}
+		isNew = true
+		log.WithField("record", record).Info("New alert is created")
 	} else {
+		log.WithField("records", records).Info("Existing alert is found")
 		record = records[0]
+		isNew = false
 	}
 
 	record.AlertData = alertData
-	record.Timestamp = time.Now().UTC()
-	record.TTL = time.Now().UTC().Add(time.Second * 86400)
+	record.Timestamp = now
+	record.TTL = ttl
 
-	lib.Dump("AlertRecord", record)
+	log.WithField("AlertRecord", record).Info("Put record")
 	err = x.table.Put(&record).Run()
 	if err != nil {
-		return reportID, errors.Wrap(err, "Fail to put alert map")
+		return reportID, isNew, errors.Wrap(err, "Fail to put alert map")
 	}
 
-	return record.ReportID, nil
+	return record.ReportID, isNew, nil
 }

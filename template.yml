@@ -11,6 +11,15 @@ Parameters:
   ReviewerLambdaArn:
     Type: String
     Default: ""
+  AlertNotificationName:
+    Type: String
+    Default: ""
+  TaskNotificationName:
+    Type: String
+    Default: ""
+  ReportNotificationName:
+    Type: String
+    Default: ""
   InspectionDelay:
     Type: Number
     Default: 300
@@ -25,6 +34,12 @@ Conditions:
     Fn::Equals: [ { Ref: StepFunctionRoleArn }, "" ]
   NoReviewer:
     Fn::Equals: [ { Ref: ReviewerLambdaArn }, "" ]
+  IsDefaultAlertNotificationName:
+    Fn::Equals: [ { Ref: AlertNotificationName }, "" ]
+  IsDefaultTaskNotificationName:
+    Fn::Equals: [ { Ref: TaskNotificationName }, "" ]
+  IsDefaultReportNotificationName:
+    Fn::Equals: [ { Ref: ReportNotificationName }, "" ]
 
 Globals:
   Function:
@@ -130,6 +145,7 @@ Resources:
       Handler: receptor
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           ALERT_MAP:
@@ -138,15 +154,14 @@ Resources:
             Ref: DelayDispatcher
           REVIEW_MACHINE:
             Ref: ReviewInvoker
-          REPORT_LINE:
-            Ref: ReportLine
+          REPORT_NOTIFICATION:
+            Ref: ReportNotification
       Events:
         NotifyTopic:
           Type: SNS
           Properties:
             Topic:
               Ref: AlertNotification
-
 
   Dispatcher:
     Type: AWS::Serverless::Function
@@ -155,8 +170,20 @@ Resources:
       Handler: dispatcher
       Environment:
         Variables:
-          STREAM_NAME:
-            Fn::Sub: ${TaskStream}
+          TASK_NOTIFICATION:
+            Ref: TaskNotification
+      Role:
+        Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
+
+  Submitter:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build
+      Handler: submitter
+      Environment:
+        Variables:
+          REPORT_DATA:
+            Ref: ReportData
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
@@ -179,8 +206,8 @@ Resources:
       Handler: publisher
       Environment:
         Variables:
-          REPORT_LINE:
-            Ref: ReportLine
+          REPORT_NOTIFICATION:
+            Ref: ReportNotification
       Role:
         Fn::If: [ LambdaRoleRequired, {"Fn::GetAtt": LambdaRole.Arn}, {Ref: LambdaRoleArn} ]
 
@@ -204,12 +231,30 @@ Resources:
   # SNS topics
   AlertNotification:
     Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::If:
+          - IsDefaultAlertNotificationName
+          - {"Fn::Sub": [ "${StackName}-AlertNotification", { StackName: { "Ref": "AWS::StackName" } } ] }
+          - {"Ref": AlertNotificationName}
 
   TaskNotification:
     Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::If:
+          - IsDefaultTaskNotificationName
+          - {"Fn::Sub": [ "${StackName}-TaskNotification", { StackName: { "Ref": "AWS::StackName" } } ] }
+          - {"Ref": TaskNotificationName}
 
-  ReportLine:
+  ReportNotification:
     Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::If:
+          - IsDefaultReportNotificationName
+          - {"Fn::Sub": [ "${StackName}-ReportNotification", { StackName: { "Ref": "AWS::StackName" } } ] }
+          - {"Ref": ReportNotificationName}
 
   # --------------------------------------------------------
   # IAM Roles
@@ -249,7 +294,8 @@ Resources:
                 Action:
                   - sns:Publish
                 Resource:
-                  - Ref: ReportLine
+                  - Ref: ReportNotification
+                  - Ref: TaskNotification
               - Effect: "Allow"
                 Action:
                   - kinesis:PutRecord

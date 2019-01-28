@@ -4,13 +4,17 @@ import (
 	"context"
 	"os"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
 )
 
+var logger = logrus.New()
+
 type parameters struct {
-	region     string
-	reportLine string
+	region             string
+	reportNotification string
 }
 
 func buildParameters(ctx context.Context) (*parameters, error) {
@@ -20,31 +24,34 @@ func buildParameters(ctx context.Context) (*parameters, error) {
 	}
 
 	params := parameters{
-		region:     arn.Region(),
-		reportLine: os.Getenv("REPORT_LINE"),
+		region:             arn.Region(),
+		reportNotification: os.Getenv("REPORT_NOTIFICATION"),
 	}
 
 	return &params, nil
 }
 
 // HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
-	lib.Dump("report", report)
+func handleRequest(ctx context.Context, report lib.Report) error {
+	logger.WithField("report", report).Info("Start")
 
 	params, err := buildParameters(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	report.Status = "published"
-	err = lib.PublishSnsMessage(params.reportLine, params.region, report)
+	report.Status = lib.StatusPublished
+	err = lib.PublishSnsMessage(params.reportNotification, params.region, report)
 	if err != nil {
-		return "Error", err
+		return err
 	}
 
-	return "Good", nil
+	return nil
 }
 
 func main() {
-	lambda.Start(HandleRequest)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetLevel(logrus.InfoLevel)
+
+	lambda.Start(handleRequest)
 }

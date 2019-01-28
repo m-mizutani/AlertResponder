@@ -2,7 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Attribute is element of alert
@@ -35,17 +34,39 @@ func (x *Alert) Title() string {
 	return fmt.Sprintf("%s: %s", x.Name, x.Description)
 }
 
-// Body returns string for Github issue's main body
-func (x *Alert) Body() string {
-	lines := []string{
-		"## Attributes",
-		"",
-	}
+// AddAttribute just appends the attribute to the Alert
+func (x *Alert) AddAttribute(attr Attribute) {
+	x.Attrs = append(x.Attrs, attr)
+}
 
+// AddAttributes appends set of attribute to the Alert
+func (x *Alert) AddAttributes(attrs []Attribute) {
+	x.Attrs = append(x.Attrs, attrs...)
+}
+
+// FindAttributes searches and returns matched attributes
+func (x *Alert) FindAttributes(key string) []Attribute {
+	var attrs []Attribute
 	for _, attr := range x.Attrs {
-		line := fmt.Sprintf("- %s: `%s`", attr.Key, attr.Value)
-		lines = append(lines, line)
+		if attr.Key == key {
+			attrs = append(attrs, attr)
+		}
 	}
 
-	return strings.Join(lines, "\n")
+	return attrs
+}
+
+// Match checks attribute type and context.
+func (x *Attribute) Match(context, attrType string) bool {
+	if x.Type != attrType {
+		return false
+	}
+
+	for _, ctx := range x.Context {
+		if ctx == context {
+			return true
+		}
+	}
+
+	return false
 }

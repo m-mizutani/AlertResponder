@@ -46,47 +46,51 @@ Development
 
 - awscli >= 1.16.20
 - Go >= 1.11
-- dep >= v0.5.0
 - GNU automake >= 1.16.1
 
 ### Deploy and Test
 
-Prepare a parameter file, e.g. `param.cfg` and run make command.
+#### Deploy own AlertResponder stack
+
+Prepare a parameter file, e.g. `config.json` and run make command.
 
 ```bash
-$ cat param.cfg
-StackName=alert-responder-test
-CodeS3Bucket=some-bucket
-CodeS3Prefix=functions
+$ cat config.json
+{
+  "StackName": "your-alert-responder-name",
+  "CodeS3Bucket": "your-some-bucket",
+  "CodeS3Prefix": "for-example-functions",
 
-InspectionDelay=1
-ReviewDelay=10
-$ make CONFIG=param.cfg deploy
+  "InspectionDelay": "1",
+  "ReviewDelay": "10"
+}
+$ env AR_CONFIG=config.json make deploy
 ```
 
 NOTE: Please make sure that you need AWS credentials (e.g. API key) and appropriate permissions.
 
-After deploying AlertResponder, you need to deploy emitter plugin for test.
+#### Deploy a test stack
+
+After deploying AlertResponder, move to under `tester` directory and deploy a stack for testing.
 
 ```bash
-$ cd test/emitter
-$ ./deploy.sh alert-responder-test alert-responder-emitter-test some-bucket functions
+$ cd tester/
+$ make AR_CONFIG=../config.json deploy
 ```
 
-More details of `deploy.sh`'s arguments are following.
+You can see `param.json` that is created by script under `tester` directory after deploying.
 
+```bash
+$ cat params.json
+{
+  "AccountId": "214219211678",
+  "Region": "ap-northeast-1",
+  "Inspector": "slam-alert-responder-test-functions-Inspector-1OBGU89CT1P4B",
+  "Reporter": "slam-alert-responder-test-functions-Reporter-1NDHU0VDI8OPA"
+}
 ```
-$ ./deploy.sh <AlertResponderStackName> <TestEmitterStackName> <S3Bucket> <S3Prefix>
-```
 
-- `AlertResponderStackName`: AWS CloudFormation stack name of AlertResponder that you want to integrate the test emitter to.
-- `TestEmitterStackName`: AWS CloudFormation stack name of test emitter that you will deploy.
-- `S3Bucket`: S3 bucket name for storing test code
-- `S3Prefix`: Prefix of S3 key for storing test code
-
-`deploy.sh` creates a test paramter file `test/emitter/test.json`. It's required for integration test.
-
-Then, you can run integration test at top level directory of the git repository.
+Then, back to top level directory of the git repository and you can run integration test.
 
 ```
 $ go test -v

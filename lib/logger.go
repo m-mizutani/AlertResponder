@@ -1,18 +1,13 @@
 package lib
 
 import (
-	"log"
-	"strings"
-
-	"github.com/k0kubun/pp"
+	"github.com/sirupsen/logrus"
 )
 
-// Dump output logs for AWS Lambda
-func Dump(name string, v interface{}) {
-	coloring := pp.ColoringEnabled
-	pp.ColoringEnabled = false
-	defer func() { pp.ColoringEnabled = coloring }()
+// Logger is exported to allow replacement by external code.
+var Logger = logrus.New()
 
-	line := strings.Replace(pp.Sprintln(v), "\n", "", -1)
-	log.Printf("%s = %s\n", name, line)
+func init() {
+	Logger.SetLevel(logrus.DebugLevel)
+	Logger.SetFormatter(&logrus.JSONFormatter{})
 }

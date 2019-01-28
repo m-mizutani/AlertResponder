@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/m-mizutani/AlertResponder/lib"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type CompiledReport struct {
@@ -34,33 +35,37 @@ func buildParameters(ctx context.Context) (*parameters, error) {
 
 // HandleRequest is a main Lambda handler
 func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) {
+	log.WithField("report", report).Info("start")
+
 	params, err := buildParameters(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	lib.Dump("report", report)
 
 	pages, err := lib.FetchReportPages(params.tableName, params.region, report.ID)
 	if err != nil {
 		return nil, err
 	}
 
+	log.WithField("pages", pages).Info("Fetched pages")
+
 	c := &report.Content
-	c.RemoteHosts = map[string]lib.ReportRemoteHost{}
-	c.LocalHosts = map[string]lib.ReportLocalHost{}
+	c.OpponentHosts = map[string]lib.ReportOpponentHost{}
+	c.AlliedHosts = map[string]lib.ReportAlliedHost{}
 
 	for _, page := range pages {
-		for _, r := range page.RemoteHost {
-			h, _ := c.RemoteHosts[r.ID]
+		for _, r := range page.OpponentHosts {
+			log.WithField("id", r.ID).Info("set section to remote")
+			h, _ := c.OpponentHosts[r.ID]
 			h.Merge(r)
-			c.RemoteHosts[r.ID] = h
+			c.OpponentHosts[r.ID] = h
 		}
 
-		for _, r := range page.LocalHost {
-			h, _ := c.LocalHosts[r.ID]
+		for _, r := range page.AlliedHosts {
+			log.WithField("id", r.ID).Info("set section to local")
+			h, _ := c.AlliedHosts[r.ID]
 			h.Merge(r)
-			c.LocalHosts[r.ID] = h
+			c.AlliedHosts[r.ID] = h
 		}
 	}
 
@@ -68,5 +73,19 @@ func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) 
 }
 
 func main() {
+	log.SetFormatter(&log.JSONFormatter{})
+	switch os.Getenv("LOG_LEVEL") {
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
+
 	lambda.Start(HandleRequest)
 }

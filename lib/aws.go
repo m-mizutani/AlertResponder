@@ -10,11 +10,12 @@ import (
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.com/aws/aws-sdk-go/service/sns"
-
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // Event is a schema between Pusher and Detector
@@ -77,13 +78,13 @@ func ExecDelayMachine(stateMachineARN string, region string, report Report) erro
 		return err
 	}
 
-	Dump("startExecution response", resp)
+	Logger.WithField("response", resp).Info("Done startExecution")
 
 	return nil
 }
 
-func PublishSnsMessage(topicArn, region string, report Report) error {
-	data, err := json.Marshal(report)
+func PublishSnsMessage(topicArn, region string, data interface{}) error {
+	msg, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal report data")
 	}
@@ -94,11 +95,11 @@ func PublishSnsMessage(topicArn, region string, report Report) error {
 	snsService := sns.New(ssn)
 
 	resp, err := snsService.Publish(&sns.PublishInput{
-		Message:  aws.String(string(data)),
+		Message:  aws.String(string(msg)),
 		TopicArn: aws.String(topicArn),
 	})
 
-	Dump("SNS response", resp)
+	Logger.WithField("response", resp).Info("Done SNS Publish")
 
 	if err != nil {
 		return errors.Wrap(err, "Fail to publish report")
@@ -134,4 +135,33 @@ func GetSecretValues(secretArn string, values interface{}) error {
 	}
 
 	return nil
+}
+
+func GetPhysicalResourceId(region, stackName, logicalId string) (string, error) {
+	Logger.WithFields(logrus.Fields{
+		"stackName": stackName,
+		"region":    region,
+	}).Info("Try to get CFn resources")
+
+	ssn := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	}))
+	client := cloudformation.New(ssn)
+
+	resp, err := client.DescribeStackResources(&cloudformation.DescribeStackResourcesInput{
+		StackName: aws.String(stackName),
+	})
+	if err != nil {
+		return "", errors.Wrap(err, stackName)
+	}
+
+	Logger.WithField("resources", resp.StackResources).Debug("CFn stacks")
+	for _, resource := range resp.StackResources {
+		if *resource.LogicalResourceId == logicalId {
+			Logger.WithField("resource", resource).Info("Found target resource")
+			return *resource.PhysicalResourceId, nil
+		}
+	}
+
+	return "", errors.New("Target resource is not found in " + stackName)
 }
