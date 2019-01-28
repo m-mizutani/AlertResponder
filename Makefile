@@ -3,11 +3,6 @@ OUTPUT_FILE=sam.yml
 LIBS=lib/*.go
 FUNCTIONS=build/receptor build/dispatcher build/submitter build/compiler build/publisher build/error-handler build/novice-reviewer
 
-all: cli
-
-cli:
-	go build -o arcli
-
 build/helper: helper/*.go
 	go build -o build/helper ./helper/
 
