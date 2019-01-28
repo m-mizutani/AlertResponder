@@ -8,3 +8,4 @@ src/*.json
 *.cfg
 build
 arcli
+tester/params.json

@@ -62,6 +62,7 @@ type ReportPage struct {
 	OpponentHosts []ReportOpponentHost `json:"opponent_hosts"`
 	SubjectUser   []ReportUser         `json:"subject_users"`
 	Author        string               `json:"author"`
+	ReportID      ReportID             `json:"report_id"`
 }
 
 // NewReportPage is a constructor of ReportPage

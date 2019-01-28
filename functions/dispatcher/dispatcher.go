@@ -2,48 +2,23 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/m-mizutani/AlertResponder/lib"
+	"github.com/sirupsen/logrus"
 )
 
-func kinesisPutRecord(streamName, region string, alertData []byte) error {
-	ssn := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	}))
+var logger = logrus.New()
 
-	kinesisClient := kinesis.New(ssn)
-
-	partitionKey := "fixed_value_because_number_of_shard_is_1"
-	kinesisInput := kinesis.PutRecordInput{
-		Data:         alertData,
-		PartitionKey: &partitionKey,
-		StreamName:   &streamName,
-	}
-	result, err := kinesisClient.PutRecord(&kinesisInput)
-
-	if err != nil {
-		return err
-	}
-
-	lib.Dump("Kinesis PutRecord", result)
-
-	return nil
-}
-
-// HandleRequest is Lambda handler
-func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
-	arn, err := lib.NewArnFromContext(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	lib.Dump("report", report)
+func handleRequest(ctx context.Context, report lib.Report) error {
+	region := os.Getenv("AWS_REGION")
+	snsTopic := os.Getenv("TASK_NOTIFICATION")
+	logger.WithFields(logrus.Fields{
+		"report":   report,
+		"snsTopic": snsTopic,
+		"region":   region,
+	}).Info("Start")
 
 	for _, attr := range report.Alert.Attrs {
 		task := lib.Task{
@@ -52,17 +27,17 @@ func HandleRequest(ctx context.Context, report lib.Report) (string, error) {
 			Alert:    report.Alert,
 		}
 
-		lib.Dump("task", task)
-		taskData, err := json.Marshal(&task)
-		err = kinesisPutRecord(os.Getenv("STREAM_NAME"), arn.Region(), taskData)
-		if err != nil {
-			return "", err
+		logger.WithField("task", task).Info("Dispatch")
+		if err := lib.PublishSnsMessage(snsTopic, region, task); err != nil {
+			return err
 		}
 	}
 
-	return "done", nil
+	return nil
 }
 
 func main() {
-	lambda.Start(HandleRequest)
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+	lambda.Start(handleRequest)
 }

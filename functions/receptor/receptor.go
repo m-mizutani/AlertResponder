@@ -124,7 +124,7 @@ func Handler(cfg Config, alerts []lib.Alert) ([]string, error) {
 		}
 
 		report.Status = "new"
-		err = lib.PublishSnsMessage(os.Getenv("REPORT_LINE"), cfg.Region, report)
+		err = lib.PublishSnsMessage(os.Getenv("REPORT_NOTIFICATION"), cfg.Region, report)
 		if err != nil {
 			return resp, err
 		}

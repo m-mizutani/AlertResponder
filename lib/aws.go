@@ -14,9 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.com/aws/aws-sdk-go/service/sns"
-
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // Event is a schema between Pusher and Detector
@@ -79,13 +78,13 @@ func ExecDelayMachine(stateMachineARN string, region string, report Report) erro
 		return err
 	}
 
-	Dump("startExecution response", resp)
+	Logger.WithField("response", resp).Info("Done startExecution")
 
 	return nil
 }
 
-func PublishSnsMessage(topicArn, region string, report Report) error {
-	data, err := json.Marshal(report)
+func PublishSnsMessage(topicArn, region string, data interface{}) error {
+	msg, err := json.Marshal(data)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal report data")
 	}
@@ -96,11 +95,11 @@ func PublishSnsMessage(topicArn, region string, report Report) error {
 	snsService := sns.New(ssn)
 
 	resp, err := snsService.Publish(&sns.PublishInput{
-		Message:  aws.String(string(data)),
+		Message:  aws.String(string(msg)),
 		TopicArn: aws.String(topicArn),
 	})
 
-	Dump("SNS response", resp)
+	Logger.WithField("response", resp).Info("Done SNS Publish")
 
 	if err != nil {
 		return errors.Wrap(err, "Fail to publish report")
@@ -139,7 +138,7 @@ func GetSecretValues(secretArn string, values interface{}) error {
 }
 
 func GetPhysicalResourceId(region, stackName, logicalId string) (string, error) {
-	log.WithFields(log.Fields{
+	Logger.WithFields(logrus.Fields{
 		"stackName": stackName,
 		"region":    region,
 	}).Info("Try to get CFn resources")
@@ -156,10 +155,10 @@ func GetPhysicalResourceId(region, stackName, logicalId string) (string, error) 
 		return "", errors.Wrap(err, stackName)
 	}
 
-	log.WithField("resources", resp.StackResources).Debug("CFn stacks")
+	Logger.WithField("resources", resp.StackResources).Debug("CFn stacks")
 	for _, resource := range resp.StackResources {
 		if *resource.LogicalResourceId == logicalId {
-			log.WithField("resource", resource).Info("Found target resource")
+			Logger.WithField("resource", resource).Info("Found target resource")
 			return *resource.PhysicalResourceId, nil
 		}
 	}
