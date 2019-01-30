@@ -67,6 +67,11 @@ func makeParameters() {
 	parameterNames := []string{
 		"LambdaRoleArn",
 		"StepFunctionRoleArn",
+
+		"AlertNotificationName",
+		"TaskNotificationName",
+		"ReportNotificationName",
+
 		"ReviewerLambdaArn",
 		"InspectionDelay",
 		"ReviewDelay",
