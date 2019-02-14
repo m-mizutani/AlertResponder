@@ -116,6 +116,7 @@ type ReportDomain struct {
 
 type ReportURL struct {
 	URL       string    `json:"url"`
+	Reference string    `json:"reference"`
 	Timestamp time.Time `json:"timestamp"`
 	Source    string    `json:"source"`
 }
