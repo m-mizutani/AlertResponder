@@ -126,6 +126,7 @@ type ReportActivity struct {
 	RemoteAddr  string    `json:"remote_addr"`
 	Principal   string    `json:"principal"`
 	Action      string    `json:"action"`
+	Target      string    `json:"target"`
 	LastSeen    time.Time `json:"last_seen"`
 }
 
