@@ -2,6 +2,7 @@ package lib
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"time"
 
@@ -92,6 +93,14 @@ const (
 type ReportUser struct {
 	UserName   string           `json:"username"` // Identity
 	Activities []ReportActivity `json:"activities"`
+}
+
+func (x *ReportUser) Merge(s ReportUser) {
+	if x.UserName != s.UserName {
+		x.UserName = fmt.Sprintf("%s, %s", x.UserName, s.UserName)
+	}
+
+	x.Activities = append(x.Activities, s.Activities...)
 }
 
 type ReportMalware struct {
