@@ -90,8 +90,8 @@ const (
 )
 
 type ReportUser struct {
-	UserName     string               `json:"username"` // Identity
-	ServiceUsage []ReportServiceUsage `json:"service_usage"`
+	UserName   string           `json:"username"` // Identity
+	Activities []ReportActivity `json:"activities"`
 }
 
 type ReportMalware struct {
@@ -121,24 +121,25 @@ type ReportURL struct {
 	Source    string    `json:"source"`
 }
 
-type ReportServiceUsage struct {
+type ReportActivity struct {
 	ServiceName string    `json:"service_name"`
+	RemoteAddr  string    `json:"remote_addr"`
 	Principal   string    `json:"principal"`
 	Action      string    `json:"action"`
 	LastSeen    time.Time `json:"last_seen"`
 }
 
 type ReportAlliedHost struct {
-	ID           string               `json:"id"`
-	UserName     []string             `json:"username"`
-	Owner        []string             `json:"owner"`
-	OS           []string             `json:"os"`
-	IPAddr       []string             `json:"ipaddr"`
-	MACAddr      []string             `json:"macaddr"`
-	HostName     []string             `json:"hostname"`
-	Country      []string             `json:"country"`
-	Software     []string             `json:"software"`
-	ServiceUsage []ReportServiceUsage `json:"service_usage"`
+	ID         string           `json:"id"`
+	UserName   []string         `json:"username"`
+	Owner      []string         `json:"owner"`
+	OS         []string         `json:"os"`
+	IPAddr     []string         `json:"ipaddr"`
+	MACAddr    []string         `json:"macaddr"`
+	HostName   []string         `json:"hostname"`
+	Country    []string         `json:"country"`
+	Software   []string         `json:"software"`
+	Activities []ReportActivity `json:"activities"`
 }
 
 func (x *ReportAlliedHost) Merge(s ReportAlliedHost) {
@@ -151,7 +152,7 @@ func (x *ReportAlliedHost) Merge(s ReportAlliedHost) {
 	x.HostName = append(x.HostName, s.HostName...)
 	x.Country = append(x.Country, s.Country...)
 	x.Software = append(x.Software, s.Software...)
-	x.ServiceUsage = append(x.ServiceUsage, s.ServiceUsage...)
+	x.Activities = append(x.Activities, s.Activities...)
 }
 
 type ReportOpponentHost struct {
