@@ -67,6 +67,13 @@ func HandleRequest(ctx context.Context, report lib.Report) (*lib.Report, error) 
 			h.Merge(r)
 			c.AlliedHosts[r.ID] = h
 		}
+
+		for _, r := range page.SubjectUser {
+			log.WithField("userName", r.UserName).Info("set section to local")
+			h, _ := c.SubjectUsers[r.UserName]
+			h.Merge(r)
+			c.SubjectUsers[r.UserName] = h
+		}
 	}
 
 	return &report, nil

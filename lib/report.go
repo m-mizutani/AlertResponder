@@ -46,14 +46,14 @@ const (
 type ReportContent struct {
 	OpponentHosts map[string]ReportOpponentHost `json:"opponent_hosts"`
 	AlliedHosts   map[string]ReportAlliedHost   `json:"allied_hosts"`
-	SubjectUsers  map[string]ReportURL          `json:"subject_users"`
+	SubjectUsers  map[string]ReportUser         `json:"subject_users"`
 }
 
 func newReportContent() ReportContent {
 	return ReportContent{
 		OpponentHosts: map[string]ReportOpponentHost{},
 		AlliedHosts:   map[string]ReportAlliedHost{},
-		SubjectUsers:  map[string]ReportURL{},
+		SubjectUsers:  map[string]ReportUser{},
 	}
 }
 
