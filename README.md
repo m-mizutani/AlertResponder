@@ -1,6 +1,8 @@
 AlertResponder
 =================
 
+<font color="red">NOTE: This repository is obsoleted. New repository is here: https://github.com/m-mizutani/deepalert</font>
+
 **AlertResponder** is a serverless framework for automatic response of security alert.
 
 Overview
